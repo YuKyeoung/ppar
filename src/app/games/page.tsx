@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Button from '@/components/ui/Button';
@@ -21,6 +21,13 @@ export default function GameSelect() {
   const router = useRouter();
   const { selectGame, players } = useGameStore();
   const [activeCategory, setActiveCategory] = useState('all');
+
+  // Guard: redirect if no players (direct access / refresh)
+  useEffect(() => {
+    if (players.length < 2) router.replace('/');
+  }, [players.length, router]);
+
+  if (players.length < 2) return null;
 
   const filteredGames = getGamesByCategory(activeCategory)
     .filter((g) => g.minPlayers <= players.length);

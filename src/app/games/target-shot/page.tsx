@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
@@ -19,6 +19,13 @@ export default function TargetShot() {
   const [scores, setScores] = useState<number[]>(players.map(() => 0));
 
   const handleCountdownComplete = useCallback(() => { setPhase('playing'); moveTarget(); }, []);
+
+  // Guard: redirect if no players (direct access / refresh)
+  useEffect(() => {
+    if (players.length < 2) router.replace('/');
+  }, [players.length, router]);
+
+  if (players.length < 2) return null;
 
   const moveTarget = () => {
     setTargetPos({ x: 15 + Math.random() * 70, y: 15 + Math.random() * 70 });
@@ -87,7 +94,6 @@ export default function TargetShot() {
       <div
         className="relative w-full aspect-square rounded-clay-lg bg-gradient-to-br from-white to-coffee-100 shadow-clay overflow-hidden cursor-crosshair"
         onClick={handleShot}
-        onTouchStart={handleShot}
       >
         <div className="absolute inset-0 flex items-center justify-center opacity-10">
           <div className="w-3/4 aspect-square rounded-full border-4 border-coffee-300" />

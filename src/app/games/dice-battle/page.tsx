@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
@@ -19,6 +19,13 @@ export default function DiceBattle() {
   const [scores, setScores] = useState<number[]>(players.map(() => 0));
 
   const handleCountdownComplete = useCallback(() => setPhase('playing'), []);
+
+  // Guard: redirect if no players (direct access / refresh)
+  useEffect(() => {
+    if (players.length < 2) router.replace('/');
+  }, [players.length, router]);
+
+  if (players.length < 2) return null;
 
   const roll = () => {
     if (rolling || currentPlayer >= players.length) return;

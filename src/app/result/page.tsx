@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Button from '@/components/ui/Button';
@@ -16,7 +17,14 @@ const lastStyle = 'bg-gradient-to-br from-[#EF9A9A] to-danger shadow-[3px_3px_6p
 
 export default function ResultPage() {
   const router = useRouter();
-  const { result, selectedGame, resetScores } = useGameStore();
+  const { result, selectedGame, resetScores, players } = useGameStore();
+
+  // Guard: redirect if no players (direct access / refresh)
+  useEffect(() => {
+    if (players.length < 2) router.replace('/');
+  }, [players.length, router]);
+
+  if (players.length < 2) return null;
 
   if (!result) {
     return (

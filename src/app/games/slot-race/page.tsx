@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
@@ -22,6 +22,13 @@ export default function SlotRace() {
 
   const handleCountdownComplete = useCallback(() => setPhase('playing'), []);
 
+  // Guard: redirect if no players (direct access / refresh)
+  useEffect(() => {
+    if (players.length < 2) router.replace('/');
+  }, [players.length, router]);
+
+  if (players.length < 2) return null;
+
   const spin = () => {
     if (spinning) return;
     setSpinning(true);
@@ -34,27 +41,27 @@ export default function SlotRace() {
       setScores((prev) => {
         const next = [...prev];
         next[currentPlayer] += points;
+
+        const nextRound = round + 1;
+        if (nextRound >= 3) {
+          if (currentPlayer >= players.length - 1) {
+            // Use `next` (the latest scores) instead of stale `scores` closure
+            setTimeout(() => {
+              next.forEach((s, i) => updateScore(players[i].id, s));
+              const ranked = players.map((p, i) => ({ ...p, score: next[i] })).sort((a, b) => b.score - a.score);
+              setResult({ rankings: ranked, loser: ranked[ranked.length - 1], gameName: selectedGame?.name || '슬롯 레이스' });
+              router.push('/result');
+            }, 1000);
+          } else {
+            setTimeout(() => { setCurrentPlayer((c) => c + 1); setRound(0); }, 1000);
+          }
+        } else {
+          setRound(nextRound);
+        }
+
         return next;
       });
       setSpinning(false);
-
-      const nextRound = round + 1;
-      if (nextRound >= 3) {
-        if (currentPlayer >= players.length - 1) {
-          setTimeout(() => {
-            const finalScores = [...scores];
-            finalScores[currentPlayer] += points;
-            finalScores.forEach((s, i) => updateScore(players[i].id, s));
-            const ranked = players.map((p, i) => ({ ...p, score: finalScores[i] })).sort((a, b) => b.score - a.score);
-            setResult({ rankings: ranked, loser: ranked[ranked.length - 1], gameName: selectedGame?.name || '슬롯 레이스' });
-            router.push('/result');
-          }, 1000);
-        } else {
-          setTimeout(() => { setCurrentPlayer((c) => c + 1); setRound(0); }, 1000);
-        }
-      } else {
-        setRound(nextRound);
-      }
     }, 1200);
   };
 

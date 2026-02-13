@@ -21,6 +21,11 @@ export default function RocketLaunch() {
 
   const handleCountdownComplete = useCallback(() => { setPhase('playing'); startFill(); }, []);
 
+  // Guard: redirect if no players (direct access / refresh)
+  useEffect(() => {
+    if (players.length < 2) router.replace('/');
+  }, [players.length, router]);
+
   const startFill = () => {
     setPower(0);
     setFilling(true);
@@ -61,6 +66,8 @@ export default function RocketLaunch() {
   };
 
   useEffect(() => { return () => { if (intervalRef.current) clearInterval(intervalRef.current); }; }, []);
+
+  if (players.length < 2) return null;
 
   if (phase === 'countdown') return <CountDown onComplete={handleCountdownComplete} />;
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
@@ -32,6 +32,13 @@ export default function MathBattle() {
   const TOTAL_Q = 5;
 
   const handleCountdownComplete = useCallback(() => { setPhase('playing'); startTime.current = Date.now(); }, []);
+
+  // Guard: redirect if no players (direct access / refresh)
+  useEffect(() => {
+    if (players.length < 2) router.replace('/');
+  }, [players.length, router]);
+
+  if (players.length < 2) return null;
 
   const submit = () => {
     const isCorrect = parseInt(input) === problem.answer;

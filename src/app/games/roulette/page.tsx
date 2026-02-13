@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useAnimation } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
@@ -17,6 +17,13 @@ export default function Roulette() {
   const currentRotation = useRef(0);
 
   const handleCountdownComplete = useCallback(() => setPhase('playing'), []);
+
+  // Guard: redirect if no players (direct access / refresh)
+  useEffect(() => {
+    if (players.length < 2) router.replace('/');
+  }, [players.length, router]);
+
+  if (players.length < 2) return null;
 
   const spin = async () => {
     if (spinning) return;
@@ -38,14 +45,12 @@ export default function Roulette() {
     setSpinning(false);
 
     setTimeout(() => {
-      const loser = players[loserIdx];
-      const rankings = [...players].filter((_, i) => i !== loserIdx);
-      rankings.push(loser);
-      rankings.forEach((p, i) => p.score = rankings.length - i);
-      loser.score = 0;
+      const others = players.filter((_, i) => i !== loserIdx).map((p, i, arr) => ({ ...p, score: arr.length - i }));
+      const loserCopy = { ...players[loserIdx], score: 0 };
+      const rankings = [...others, loserCopy];
       setResult({
         rankings,
-        loser,
+        loser: loserCopy,
         gameName: selectedGame?.name || '룰렛',
       });
       router.push('/result');

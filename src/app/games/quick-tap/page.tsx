@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
@@ -19,6 +19,13 @@ export default function QuickTap() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleCountdownComplete = useCallback(() => { setPhase('playing'); startRound(); }, []);
+
+  // Guard: redirect if no players (direct access / refresh)
+  useEffect(() => {
+    if (players.length < 2) router.replace('/');
+  }, [players.length, router]);
+
+  if (players.length < 2) return null;
 
   const startRound = () => {
     setState('ready');

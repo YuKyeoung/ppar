@@ -18,19 +18,22 @@ export default function NunchiGame() {
 
   const handleCountdownComplete = useCallback(() => setPhase('playing'), []);
 
+  // Guard: redirect if no players (direct access / refresh)
+  useEffect(() => {
+    if (players.length < 2) router.replace('/');
+  }, [players.length, router]);
+
   const aliveCount = alive.filter(Boolean).length;
 
   useEffect(() => {
     if (phase !== 'playing') return;
     if (aliveCount <= 1) {
       const loserIdx = alive.findIndex(Boolean);
-      const loser = players[loserIdx];
-      const rankings = players.filter((_, i) => i !== loserIdx);
-      rankings.push(loser);
-      rankings.forEach((p, i) => (p.score = rankings.length - i));
-      loser.score = 0;
+      const others = players.filter((_, i) => i !== loserIdx).map((p, i, arr) => ({ ...p, score: arr.length - i }));
+      const loserCopy = { ...players[loserIdx], score: 0 };
+      const rankings = [...others, loserCopy];
       setTimeout(() => {
-        setResult({ rankings, loser, gameName: selectedGame?.name || '눈치 게임' });
+        setResult({ rankings, loser: loserCopy, gameName: selectedGame?.name || '눈치 게임' });
         router.push('/result');
       }, 1500);
       return;
@@ -75,6 +78,8 @@ export default function NunchiGame() {
       setCurrentNumber(1);
     }
   }, [currentNumber]);
+
+  if (players.length < 2) return null;
 
   if (phase === 'countdown') return <CountDown onComplete={handleCountdownComplete} />;
 

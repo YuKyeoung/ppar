@@ -24,6 +24,11 @@ export default function BombPass() {
     setPhase('playing');
   }, []);
 
+  // Guard: redirect if no players (direct access / refresh)
+  useEffect(() => {
+    if (players.length < 2) router.replace('/');
+  }, [players.length, router]);
+
   useEffect(() => {
     if (phase !== 'playing') return;
     timerRef.current = setInterval(() => {
@@ -34,12 +39,10 @@ export default function BombPass() {
           clearInterval(timerRef.current!);
           setPhase('boom');
           setTimeout(() => {
-            const loser = players[holder];
-            const rankings = players.filter((_, i) => i !== holder);
-            rankings.push(loser);
-            rankings.forEach((p, i) => (p.score = rankings.length - i));
-            loser.score = 0;
-            setResult({ rankings, loser, gameName: selectedGame?.name || '폭탄 돌리기' });
+            const others = players.filter((_, i) => i !== holder).map((p, i, arr) => ({ ...p, score: arr.length - i }));
+            const loserCopy = { ...players[holder], score: 0 };
+            const rankings = [...others, loserCopy];
+            setResult({ rankings, loser: loserCopy, gameName: selectedGame?.name || '폭탄 돌리기' });
             router.push('/result');
           }, 2000);
           return 0;
@@ -49,6 +52,8 @@ export default function BombPass() {
     }, 100);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [phase]);
+
+  if (players.length < 2) return null;
 
   const pass = () => {
     if (phase !== 'playing') return;

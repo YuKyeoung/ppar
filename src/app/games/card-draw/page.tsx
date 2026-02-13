@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
@@ -21,6 +21,13 @@ export default function CardDraw() {
   const [picked, setPicked] = useState<number[]>([]);
 
   const handleCountdownComplete = useCallback(() => setPhase('playing'), []);
+
+  // Guard: redirect if no players (direct access / refresh)
+  useEffect(() => {
+    if (players.length < 2) router.replace('/');
+  }, [players.length, router]);
+
+  if (players.length < 2) return null;
 
   const pickCard = (index: number) => {
     if (revealed[index] || picked.includes(index)) return;

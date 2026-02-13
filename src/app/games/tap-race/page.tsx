@@ -19,39 +19,31 @@ export default function TapRace() {
   const [scores, setScores] = useState<number[]>(players.map(() => 0));
   const [active, setActive] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const tapsRef = useRef(0);
+
+  // Guard: redirect if no players (direct access / refresh)
+  useEffect(() => {
+    if (players.length < 2) router.replace('/');
+  }, [players.length, router]);
+
+  const startRound = useCallback(() => {
+    setTaps(0);
+    tapsRef.current = 0;
+    setTimeLeft(DURATION);
+    setActive(true);
+  }, []);
 
   const handleCountdownComplete = useCallback(() => {
     setPhase('playing');
     startRound();
-  }, []);
+  }, [startRound]);
 
-  const startRound = () => {
-    setTaps(0);
-    setTimeLeft(DURATION);
-    setActive(true);
-  };
-
-  useEffect(() => {
-    if (!active) return;
-    timerRef.current = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1) {
-          clearInterval(timerRef.current!);
-          setActive(false);
-          finishRound();
-          return 0;
-        }
-        return t - 1;
-      });
-    }, 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [active, currentPlayer]);
-
-  const finishRound = () => {
+  const finishRound = useCallback(() => {
+    const finalTaps = tapsRef.current;
     setScores((prev) => {
       const next = [...prev];
-      next[currentPlayer] = taps;
-      updateScore(players[currentPlayer].id, taps);
+      next[currentPlayer] = finalTaps;
+      updateScore(players[currentPlayer].id, finalTaps);
 
       if (currentPlayer >= players.length - 1) {
         setTimeout(() => {
@@ -73,10 +65,29 @@ export default function TapRace() {
       }
       return next;
     });
-  };
+  }, [currentPlayer, players, updateScore, setResult, selectedGame, router, startRound]);
+
+  useEffect(() => {
+    if (!active) return;
+    timerRef.current = setInterval(() => {
+      setTimeLeft((t) => {
+        if (t <= 1) {
+          clearInterval(timerRef.current!);
+          setActive(false);
+          finishRound();
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [active, finishRound]);
+
+  if (players.length < 2) return null;
 
   const handleTap = () => {
     if (!active) return;
+    tapsRef.current += 1;
     setTaps((t) => t + 1);
   };
 
