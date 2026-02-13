@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import CountDown from '@/components/game/CountDown';
+import { SFX } from '@/utils/sound';
+import { haptic } from '@/utils/haptic';
 
 export default function BombPass() {
   const router = useRouter();
@@ -38,6 +40,8 @@ export default function BombPass() {
         if (next <= 0) {
           clearInterval(timerRef.current!);
           setPhase('boom');
+          SFX.boom();
+          haptic('heavy');
           setTimeout(() => {
             const others = players.filter((_, i) => i !== holder).map((p, i, arr) => ({ ...p, score: arr.length - i }));
             const loserCopy = { ...players[holder], score: 0 };
@@ -57,6 +61,8 @@ export default function BombPass() {
 
   const pass = () => {
     if (phase !== 'playing') return;
+    SFX.tap();
+    haptic('light');
     setHolder((h) => (h + 1) % players.length);
   };
 

@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
+import { SFX } from '@/utils/sound';
+import { haptic } from '@/utils/haptic';
+import { shareResult } from '@/utils/share';
 
 const rankStyles = [
   'bg-gradient-to-br from-[#FFD54F] to-[#FFB300] shadow-[3px_3px_6px_rgba(255,179,0,0.3)]',
@@ -18,11 +21,19 @@ const lastStyle = 'bg-gradient-to-br from-[#EF9A9A] to-danger shadow-[3px_3px_6p
 export default function ResultPage() {
   const router = useRouter();
   const { result, selectedGame, resetScores, players } = useGameStore();
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
 
   // Guard: redirect if no players (direct access / refresh)
   useEffect(() => {
     if (players.length < 2) router.replace('/');
   }, [players.length, router]);
+
+  useEffect(() => {
+    if (result) {
+      SFX.fanfare();
+      haptic('heavy');
+    }
+  }, [result]);
 
   if (players.length < 2) return null;
 
@@ -99,6 +110,17 @@ export default function ResultPage() {
       </motion.div>
 
       <div className="w-full flex flex-col gap-2.5 mt-2">
+        <Button variant="accent" onClick={async () => {
+          const res = await shareResult({
+            gameName: result.gameName,
+            rankings: rankings.map((p) => ({ name: p.name, score: p.score, emoji: getAnimal(p.animal)?.emoji || '' })),
+            loserName: loser.name,
+          });
+          if (res === 'copied') { setShareMsg('클립보드에 복사됨!'); setTimeout(() => setShareMsg(null), 2000); }
+        }}>
+          📤 결과 공유하기
+        </Button>
+        {shareMsg && <p className="text-center text-sm font-bold text-success">{shareMsg}</p>}
         <Button variant="primary" onClick={() => {
           resetScores();
           if (selectedGame) router.push(`/games/${selectedGame.id}`);

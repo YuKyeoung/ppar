@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import CountDown from '@/components/game/CountDown';
+import { SFX } from '@/utils/sound';
+import { haptic } from '@/utils/haptic';
 
 const DICE_FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
@@ -31,6 +33,8 @@ export default function DiceBattle() {
     if (rolling || currentPlayer >= players.length) return;
     setRolling(true);
     setDiceValue(null);
+    SFX.roll();
+    haptic('medium');
 
     let count = 0;
     const interval = setInterval(() => {

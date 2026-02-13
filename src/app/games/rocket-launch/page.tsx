@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import CountDown from '@/components/game/CountDown';
+import { SFX } from '@/utils/sound';
+import { haptic } from '@/utils/haptic';
 
 export default function RocketLaunch() {
   const router = useRouter();
@@ -46,6 +48,8 @@ export default function RocketLaunch() {
     if (intervalRef.current) clearInterval(intervalRef.current);
     setFilling(false);
     setLaunched(true);
+    SFX.countdownGo();
+    haptic('heavy');
 
     const score = power;
     const newScores = [...scores];

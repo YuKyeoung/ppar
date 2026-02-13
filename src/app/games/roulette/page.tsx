@@ -6,6 +6,8 @@ import { motion, useAnimation } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import CountDown from '@/components/game/CountDown';
+import { SFX } from '@/utils/sound';
+import { haptic } from '@/utils/haptic';
 
 export default function Roulette() {
   const router = useRouter();
@@ -29,6 +31,8 @@ export default function Roulette() {
     if (spinning) return;
     setSpinning(true);
     setSelectedIdx(null);
+    SFX.tick();
+    haptic('medium');
 
     const loserIdx = Math.floor(Math.random() * players.length);
     const segmentAngle = 360 / players.length;
@@ -43,6 +47,8 @@ export default function Roulette() {
     currentRotation.current = newRotation;
     setSelectedIdx(loserIdx);
     setSpinning(false);
+    SFX.fail();
+    haptic('heavy');
 
     setTimeout(() => {
       const others = players.filter((_, i) => i !== loserIdx).map((p, i, arr) => ({ ...p, score: arr.length - i }));

@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import CountDown from '@/components/game/CountDown';
+import { haptic } from '@/utils/haptic';
 
 const DURATION = 10;
 
@@ -89,6 +90,7 @@ export default function TapRace() {
     if (!active) return;
     tapsRef.current += 1;
     setTaps((t) => t + 1);
+    haptic('light');
   };
 
   if (phase === 'countdown') {

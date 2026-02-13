@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import CountDown from '@/components/game/CountDown';
+import { SFX } from '@/utils/sound';
+import { haptic } from '@/utils/haptic';
 
 function generateProblem() {
   const ops = ['+', '-', '×'];
@@ -42,6 +44,7 @@ export default function MathBattle() {
 
   const submit = () => {
     const isCorrect = parseInt(input) === problem.answer;
+    if (isCorrect) { SFX.success(); haptic('light'); } else { SFX.fail(); haptic('medium'); }
     setFeedback(isCorrect ? 'correct' : 'wrong');
     const newCorrect = isCorrect ? correct + 1 : correct;
     setCorrect(newCorrect);

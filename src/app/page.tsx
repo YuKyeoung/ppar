@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import { useGameStore } from '@/stores/gameStore';
+import { unlockAudio } from '@/utils/sound';
 
 export default function Home() {
   const router = useRouter();
@@ -12,11 +13,13 @@ export default function Home() {
   const [showHelp, setShowHelp] = useState(false);
 
   const handleSolo = () => {
+    unlockAudio();
     setMode('solo');
     router.push('/solo/setup');
   };
 
   const handleMulti = () => {
+    unlockAudio();
     setMode('multi');
     router.push('/multi/setup');
   };

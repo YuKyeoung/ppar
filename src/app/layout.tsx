@@ -40,6 +40,11 @@ export default function RootLayout({
         <div className="max-w-[393px] mx-auto min-h-dvh relative">
           {children}
         </div>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'))}`,
+          }}
+        />
       </body>
     </html>
   );

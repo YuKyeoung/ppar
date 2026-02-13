@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import CountDown from '@/components/game/CountDown';
+import { SFX } from '@/utils/sound';
+import { haptic } from '@/utils/haptic';
 
 export default function QuickTap() {
   const router = useRouter();
@@ -40,6 +42,8 @@ export default function QuickTap() {
     if (state === 'ready') {
       if (timerRef.current) clearTimeout(timerRef.current);
       setState('early');
+      SFX.fail();
+      haptic('heavy');
       setTimeout(() => startRound(), 1500);
       return;
     }
@@ -48,6 +52,8 @@ export default function QuickTap() {
     const ms = Date.now() - startTimeRef.current;
     setReactionTime(ms);
     setState('done');
+    SFX.success();
+    haptic('medium');
 
     const score = Math.max(0, 1000 - ms);
     const newScores = [...scores];

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SFX } from '@/utils/sound';
+import { haptic } from '@/utils/haptic';
 
 interface CountDownProps {
   from?: number;
@@ -13,9 +15,13 @@ export default function CountDown({ from = 3, onComplete }: CountDownProps) {
 
   useEffect(() => {
     if (count === 0) {
+      SFX.countdownGo();
+      haptic('heavy');
       onComplete();
       return;
     }
+    SFX.countdownTick();
+    haptic('light');
     const timer = setTimeout(() => setCount(count - 1), 800);
     return () => clearTimeout(timer);
   }, [count, onComplete]);

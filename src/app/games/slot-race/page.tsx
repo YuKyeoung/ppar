@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import CountDown from '@/components/game/CountDown';
+import { SFX } from '@/utils/sound';
+import { haptic } from '@/utils/haptic';
 
 const SYMBOLS = ['🍒', '🍋', '🍊', '⭐', '💎', '7️⃣'];
 const VALUES = [1, 2, 3, 4, 5, 6];
@@ -32,6 +34,8 @@ export default function SlotRace() {
   const spin = () => {
     if (spinning) return;
     setSpinning(true);
+    SFX.roll();
+    haptic('medium');
 
     setTimeout(() => {
       const results = [0, 1, 2].map(() => Math.floor(Math.random() * 6));

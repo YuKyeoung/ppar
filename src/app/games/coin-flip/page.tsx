@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import CountDown from '@/components/game/CountDown';
+import { SFX } from '@/utils/sound';
+import { haptic } from '@/utils/haptic';
 
 export default function CoinFlip() {
   const router = useRouter();
@@ -27,6 +29,8 @@ export default function CoinFlip() {
   if (players.length < 2) return null;
 
   const choose = (choice: 'heads' | 'tails') => {
+    SFX.tap();
+    haptic('light');
     const newChoices = [...choices, choice];
     setChoices(newChoices);
 
@@ -35,10 +39,12 @@ export default function CoinFlip() {
     } else {
       setPhase('flipping');
       setFlipping(true);
+      SFX.flip();
       setTimeout(() => {
         const result = Math.random() > 0.5 ? 'heads' : 'tails';
         setCoinResult(result);
         setFlipping(false);
+        haptic('medium');
 
         const newScores = players.map((_, i) => newChoices[i] === result ? 1 : 0);
         setScores(newScores);

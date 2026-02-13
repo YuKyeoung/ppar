@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import CountDown from '@/components/game/CountDown';
+import { SFX } from '@/utils/sound';
+import { haptic } from '@/utils/haptic';
 
 export default function NunchiGame() {
   const router = useRouter();
@@ -62,6 +64,8 @@ export default function NunchiGame() {
 
   const humanPress = () => {
     if (!alive[0]) return;
+    SFX.tap();
+    haptic('light');
     pressNumber(0);
   };
 

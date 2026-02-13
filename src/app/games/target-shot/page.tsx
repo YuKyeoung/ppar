@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import CountDown from '@/components/game/CountDown';
+import { SFX } from '@/utils/sound';
+import { haptic } from '@/utils/haptic';
 
 export default function TargetShot() {
   const router = useRouter();
@@ -46,6 +48,8 @@ export default function TargetShot() {
     const tapY = ((clientY - rect.top) / rect.height) * 100;
     const dist = Math.sqrt((tapX - targetPos.x) ** 2 + (tapY - targetPos.y) ** 2);
     const points = Math.max(0, Math.round(100 - dist * 2));
+    SFX.tap();
+    haptic(points > 50 ? 'medium' : 'light');
     setLastHit(points);
     const newTotal = totalScore + points;
     setTotalScore(newTotal);
