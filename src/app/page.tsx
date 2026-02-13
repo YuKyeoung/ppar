@@ -16,7 +16,7 @@ export default function Home() {
 
   const handleMulti = () => {
     setMode('multi');
-    router.push('/solo/setup'); // TODO: Phase 6에서 멀티 대기실로 변경
+    router.push('/multi/setup');
   };
 
   return (
