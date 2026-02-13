@@ -7,6 +7,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import { SFX } from '@/utils/sound';
 import { haptic } from '@/utils/haptic';
+import TapButton from '@/components/game/TapButton';
 
 // Types for ladder data
 interface Rung {
@@ -313,15 +314,11 @@ export default function LadderGame() {
 
       {/* Start button */}
       <div className="mt-auto w-full">
-        <button
-          onClick={handleStart}
-          disabled={phase !== 'ready'}
-          className="w-full py-4 rounded-clay border-none font-display font-black text-lg bg-gradient-to-br from-accent to-[#FF9F5F] text-white shadow-clay-accent cursor-pointer disabled:opacity-50"
-        >
+        <TapButton onClick={handleStart} disabled={phase !== 'ready'}>
           {phase === 'ready' && '🪜 사다리 타기!'}
           {phase === 'tracing' && '🪜 내려가는 중...'}
           {phase === 'done' && '☕ 결과 확인 중...'}
-        </button>
+        </TapButton>
       </div>
     </div>
   );

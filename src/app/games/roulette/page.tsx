@@ -7,6 +7,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import { SFX } from '@/utils/sound';
 import { haptic } from '@/utils/haptic';
+import TapButton from '@/components/game/TapButton';
 
 export default function Roulette() {
   const router = useRouter();
@@ -136,14 +137,9 @@ export default function Roulette() {
 
       {/* Spin Button */}
       <div className="mt-auto w-full">
-        <motion.button
-          whileTap={{ scale: 0.96 }}
-          onClick={spin}
-          disabled={spinning || loserIdx !== null}
-          className="w-full py-4 rounded-clay border-none font-display font-black text-lg bg-gradient-to-br from-accent to-[#FF9F5F] text-white shadow-clay-accent cursor-pointer disabled:opacity-50"
-        >
+        <TapButton onClick={spin} disabled={spinning || loserIdx !== null}>
           {spinning ? '🌀 돌아가는 중...' : '🎡 룰렛 돌리기!'}
-        </motion.button>
+        </TapButton>
       </div>
     </div>
   );

@@ -4,9 +4,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
-import { getAnimal } from '@/constants/animals';
 import { SFX } from '@/utils/sound';
 import { haptic } from '@/utils/haptic';
+import TapButton from '@/components/game/TapButton';
+import PlayerCard from '@/components/game/PlayerCard';
 
 const DICE_FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
@@ -103,30 +104,17 @@ export default function Dice() {
       <div className="flex-1 flex items-center justify-center w-full">
         <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
           {players.map((p, i) => {
-            const animal = getAnimal(p.animal);
             const isLoser =
               done &&
               finalValues.length > 0 &&
               finalValues[i] === Math.min(...finalValues);
             return (
-              <motion.div
+              <PlayerCard
                 key={p.id}
-                className="flex flex-col items-center gap-2 p-4 rounded-clay bg-gradient-to-br from-white to-coffee-100 shadow-clay"
-                animate={
-                  done
-                    ? isLoser
-                      ? { scale: [1, 1.1, 1.05], borderColor: '#FF6B6B' }
-                      : { opacity: 0.6 }
-                    : {}
-                }
-                transition={{ duration: 0.4 }}
+                player={p}
+                isLoser={done && isLoser}
+                dimmed={done && !isLoser}
               >
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xl">{animal?.emoji}</span>
-                  <span className="text-xs font-bold text-coffee-700">
-                    {p.name}
-                  </span>
-                </div>
                 <motion.span
                   className="text-5xl"
                   animate={rolling ? { rotate: [0, 15, -15, 10, -10, 0] } : {}}
@@ -147,7 +135,7 @@ export default function Dice() {
                     {finalValues[i]}점
                   </motion.span>
                 )}
-              </motion.div>
+              </PlayerCard>
             );
           })}
         </div>
@@ -155,14 +143,9 @@ export default function Dice() {
 
       {/* Roll Button */}
       <div className="mt-auto w-full">
-        <motion.button
-          whileTap={{ scale: 0.96 }}
-          onClick={roll}
-          disabled={rolling || done}
-          className="w-full py-4 rounded-clay border-none font-display font-black text-lg bg-gradient-to-br from-accent to-[#FF9F5F] text-white shadow-clay-accent cursor-pointer disabled:opacity-50"
-        >
+        <TapButton onClick={roll} disabled={rolling || done}>
           {rolling ? '🌀 굴리는 중...' : '🎲 주사위 굴리기!'}
-        </motion.button>
+        </TapButton>
       </div>
     </div>
   );

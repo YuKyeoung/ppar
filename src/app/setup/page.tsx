@@ -4,39 +4,51 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 import { useGameStore } from '@/stores/gameStore';
-import { generateId } from '@/utils/random';
-import { ANIMALS } from '@/constants/animals';
+import { generateId, randomAnimalIds } from '@/utils/random';
 import { unlockAudio } from '@/utils/sound';
-import type { Player, AnimalType } from '@/types';
+import type { Player } from '@/types';
+
+const MIN_PLAYERS = 2;
+const MAX_PLAYERS = 6;
 
 export default function SetupPage() {
   const router = useRouter();
   const setPlayers = useGameStore((s) => s.setPlayers);
-  const [selected, setSelected] = useState<AnimalType[]>([]);
+  const [names, setNames] = useState<string[]>(['', '']);
 
-  const toggle = (id: AnimalType) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((a) => a !== id) : prev.length < 6 ? [...prev, id] : prev
-    );
+  const updateName = (index: number, value: string) => {
+    setNames((prev) => prev.map((n, i) => (i === index ? value : n)));
+  };
+
+  const addPlayer = () => {
+    if (names.length < MAX_PLAYERS) {
+      setNames((prev) => [...prev, '']);
+    }
+  };
+
+  const removePlayer = (index: number) => {
+    if (names.length > MIN_PLAYERS) {
+      setNames((prev) => prev.filter((_, i) => i !== index));
+    }
   };
 
   const handleStart = () => {
     unlockAudio();
-    const players: Player[] = selected.map((animalId) => {
-      const animal = ANIMALS.find((a) => a.id === animalId);
-      return {
-        id: generateId(),
-        name: animal?.name || animalId,
-        animal: animalId,
-        score: 0,
-      };
-    });
+    const animalIds = randomAnimalIds(names.length);
+    const players: Player[] = names.map((name, i) => ({
+      id: generateId(),
+      name: name.trim() || `Player ${i + 1}`,
+      animal: animalIds[i],
+      score: 0,
+    }));
     setPlayers(players);
     router.push('/games');
   };
 
-  const canStart = selected.length >= 2;
+  const filledCount = names.filter((n) => n.trim().length > 0).length;
+  const canStart = filledCount >= MIN_PLAYERS;
 
   return (
     <div className="flex flex-col min-h-dvh px-5 py-6 bg-gradient-to-b from-cream to-coffee-100">
@@ -49,65 +61,61 @@ export default function SetupPage() {
           ←
         </motion.button>
         <h2 className="font-display text-[22px] font-black text-coffee-800">
-          캐릭터 선택
+          참가자 입력
         </h2>
       </div>
 
       <p className="text-sm font-bold text-coffee-400 mb-4">
-        참가할 캐릭터를 골라주세요 (2~6명)
+        이름을 입력하면 캐릭터가 자동 배정됩니다 (2~6명)
       </p>
 
-      <div className="grid grid-cols-3 gap-3">
-        {ANIMALS.map((animal) => {
-          const isSelected = selected.includes(animal.id);
-          const order = selected.indexOf(animal.id);
-          return (
-            <motion.button
-              key={animal.id}
-              whileTap={{ scale: 0.93 }}
-              onClick={() => toggle(animal.id)}
-              className={`
-                flex flex-col items-center gap-1.5 py-4 px-2 rounded-clay-lg border-none cursor-pointer
-                transition-all relative
-                ${isSelected
-                  ? 'bg-gradient-to-br from-coffee-500 to-coffee-500/90 shadow-clay-primary'
-                  : 'bg-gradient-to-br from-white to-coffee-100 shadow-clay'
-                }
-              `}
-            >
-              {isSelected && (
-                <div className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-accent text-white text-xs font-black flex items-center justify-center shadow">
-                  {order + 1}
-                </div>
-              )}
-              <span className="text-4xl">{animal.emoji}</span>
-              <span className={`text-xs font-bold ${isSelected ? 'text-cream' : 'text-coffee-600'}`}>
-                {animal.name}
-              </span>
-            </motion.button>
-          );
-        })}
+      <div className="flex flex-col gap-3">
+        {names.map((name, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className="flex items-center gap-2"
+          >
+            <span className="text-sm font-black text-coffee-500 w-6 text-center">
+              {i + 1}
+            </span>
+            <Input
+              placeholder={`Player ${i + 1}`}
+              value={name}
+              onChange={(e) => updateName(i, e.target.value)}
+              maxLength={10}
+              className="!py-3"
+            />
+            {names.length > MIN_PLAYERS && (
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => removePlayer(i)}
+                className="w-9 h-9 rounded-full border-none bg-gradient-to-br from-[#FFCDD2] to-[#EF9A9A] text-[#C62828] text-sm font-black flex items-center justify-center cursor-pointer shadow-clay"
+              >
+                ✕
+              </motion.button>
+            )}
+          </motion.div>
+        ))}
       </div>
 
-      {selected.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-4 flex items-center gap-2 justify-center"
+      {names.length < MAX_PLAYERS && (
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={addPlayer}
+          className="mt-3 w-full py-3 rounded-clay border-2 border-dashed border-coffee-300 bg-transparent text-coffee-400 font-bold text-sm cursor-pointer"
         >
-          <span className="text-sm font-bold text-coffee-500">참가자:</span>
-          {selected.map((id) => {
-            const a = ANIMALS.find((x) => x.id === id);
-            return <span key={id} className="text-2xl">{a?.emoji}</span>;
-          })}
-        </motion.div>
+          + 참가자 추가
+        </motion.button>
       )}
 
       <div className="flex-1" />
 
       <div className="mt-6">
         <Button variant="primary" onClick={handleStart} disabled={!canStart}>
-          {canStart ? `${selected.length}명으로 시작!` : '2명 이상 선택해주세요'}
+          {canStart ? `${filledCount}명으로 시작!` : '2명 이상 이름을 입력해주세요'}
         </Button>
       </div>
     </div>

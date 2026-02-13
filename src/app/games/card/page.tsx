@@ -7,6 +7,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import { SFX } from '@/utils/sound';
 import { haptic } from '@/utils/haptic';
+import TapButton from '@/components/game/TapButton';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const SUIT_COLORS: Record<string, string> = {
@@ -184,14 +185,9 @@ export default function Card() {
 
       {/* Flip Button */}
       <div className="mt-auto w-full">
-        <motion.button
-          whileTap={{ scale: 0.96 }}
-          onClick={flipCards}
-          disabled={flipped}
-          className="w-full py-4 rounded-clay border-none font-display font-black text-lg bg-gradient-to-br from-accent to-[#FF9F5F] text-white shadow-clay-accent cursor-pointer disabled:opacity-50"
-        >
+        <TapButton onClick={flipCards} disabled={flipped}>
           {flipped ? '🃏 카드 오픈 중...' : '🃏 카드 오픈!'}
-        </motion.button>
+        </TapButton>
       </div>
     </div>
   );

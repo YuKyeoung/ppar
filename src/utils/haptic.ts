@@ -1,13 +1,27 @@
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+
 /**
- * Trigger haptic feedback on mobile devices.
- * Falls back silently on unsupported devices.
+ * Trigger haptic feedback using Capacitor Haptics API.
+ * Falls back to navigator.vibrate on unsupported platforms.
  */
-export function haptic(style: 'light' | 'medium' | 'heavy' = 'light') {
-  if (typeof navigator === 'undefined' || !navigator.vibrate) return;
-  const patterns: Record<string, number[]> = {
-    light: [10],
-    medium: [20],
-    heavy: [30, 10, 30],
+export async function haptic(style: 'light' | 'medium' | 'heavy' = 'light') {
+  const styleMap: Record<string, ImpactStyle> = {
+    light: ImpactStyle.Light,
+    medium: ImpactStyle.Medium,
+    heavy: ImpactStyle.Heavy,
   };
-  navigator.vibrate(patterns[style] || [10]);
+
+  try {
+    await Haptics.impact({ style: styleMap[style] });
+  } catch {
+    // Fallback for web
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      const patterns: Record<string, number[]> = {
+        light: [10],
+        medium: [20],
+        heavy: [30, 10, 30],
+      };
+      navigator.vibrate(patterns[style] || [10]);
+    }
+  }
 }

@@ -7,6 +7,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import { SFX } from '@/utils/sound';
 import { haptic } from '@/utils/haptic';
+import TapButton from '@/components/game/TapButton';
 
 type Phase = 'ready' | 'revealing' | 'done';
 
@@ -221,15 +222,11 @@ export default function StrawGame() {
 
       {/* Draw button */}
       <div className="w-full">
-        <button
-          onClick={handleDraw}
-          disabled={phase !== 'ready'}
-          className="w-full py-4 rounded-clay border-none font-display font-black text-lg bg-gradient-to-br from-accent to-[#FF9F5F] text-white shadow-clay-accent cursor-pointer disabled:opacity-50"
-        >
+        <TapButton onClick={handleDraw} disabled={phase !== 'ready'}>
           {phase === 'ready' && '🎋 제비 뽑기!'}
           {phase === 'revealing' && '🎋 뽑는 중...'}
           {phase === 'done' && '☕ 결과 확인 중...'}
-        </button>
+        </TapButton>
       </div>
     </div>
   );
