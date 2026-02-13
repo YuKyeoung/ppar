@@ -24,7 +24,7 @@ const ROWS = 10;
 const COL_WIDTH = 72;
 const ROW_HEIGHT = 36;
 const LADDER_TOP = 64;
-const TRACE_DURATION = 1.2; // seconds per player trace
+// TRACE_DURATION is computed dynamically inside the component based on player count
 
 function generateRungs(numCols: number): Rung[] {
   const rungs: Rung[] = [];
@@ -84,8 +84,9 @@ export default function LadderGame() {
     if (players.length < 2) router.replace('/');
   }, [players.length, router]);
 
-  // Generate ladder data once on mount
+  // Dynamic trace duration: total ~10s across all players
   const numCols = players.length;
+  const traceDuration = 10 / numCols; // seconds per player
 
   const rungs = useMemo(() => {
     if (numCols < 2) return [];
@@ -127,7 +128,7 @@ export default function LadderGame() {
     for (let i = 0; i < players.length; i++) {
       setTracingIdx(i);
       SFX.tick();
-      await new Promise((resolve) => setTimeout(resolve, TRACE_DURATION * 1000 + 200));
+      await new Promise((resolve) => setTimeout(resolve, traceDuration * 1000 + 200));
       setRevealedPaths((prev) => { const next = new Set(Array.from(prev)); next.add(i); return next; });
     }
 
@@ -135,7 +136,7 @@ export default function LadderGame() {
     SFX.fail();
     haptic('heavy');
 
-    // Delay then navigate
+    // Delay then navigate (2s viewing time)
     setTimeout(() => {
       const loser = players[loserIdx];
       const rankings = players
@@ -151,8 +152,8 @@ export default function LadderGame() {
         gameName: '사다리 타기',
       });
       router.push('/result');
-    }, 1000);
-  }, [phase, players, loserIdx, paths, coffeeCol, setResult, router]);
+    }, 2000);
+  }, [phase, players, loserIdx, paths, coffeeCol, traceDuration, setResult, router]);
 
   if (players.length < 2) return null;
 
@@ -268,7 +269,7 @@ export default function LadderGame() {
                   initial={{ pathLength: 0 }}
                   animate={{ pathLength: 1 }}
                   transition={{
-                    duration: isTracing ? TRACE_DURATION : 0,
+                    duration: isTracing ? traceDuration : 0,
                     ease: 'linear',
                   }}
                   style={{

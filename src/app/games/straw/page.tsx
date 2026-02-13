@@ -13,7 +13,7 @@ type Phase = 'ready' | 'revealing' | 'done';
 const LONG_HEIGHT = 85; // percent
 const SHORT_HEIGHT = 40; // percent
 const STRAW_WIDTH = 28;
-const REVEAL_STAGGER = 0.3; // seconds between each straw reveal
+// REVEAL_STAGGER is computed dynamically inside the component based on player count
 
 export default function StrawGame() {
   const router = useRouter();
@@ -25,6 +25,9 @@ export default function StrawGame() {
   useEffect(() => {
     if (players.length < 2) router.replace('/');
   }, [players.length, router]);
+
+  // Dynamic stagger: total ~10s across all players
+  const revealStagger = 10 / players.length; // seconds between each straw
 
   // Random loser index (determined on mount)
   const loserIdx = useMemo(() => {
@@ -49,13 +52,13 @@ export default function StrawGame() {
       if (count >= players.length) {
         clearInterval(interval);
 
-        // Small delay, then play fail for the short straw
+        // Dramatic pause, then play fail for the short straw
         setTimeout(() => {
           SFX.fail();
           haptic('heavy');
           setPhase('done');
 
-          // Navigate to result after delay
+          // Navigate to result after viewing time
           setTimeout(() => {
             const loser = players[loserIdx];
             const rankings = players
@@ -71,11 +74,11 @@ export default function StrawGame() {
               gameName: '제비뽑기',
             });
             router.push('/result');
-          }, 1500);
-        }, 400);
+          }, 2000);
+        }, 1000);
       }
-    }, REVEAL_STAGGER * 1000);
-  }, [phase, players, loserIdx, setResult, router]);
+    }, revealStagger * 1000);
+  }, [phase, players, loserIdx, revealStagger, setResult, router]);
 
   if (players.length < 2) return null;
 

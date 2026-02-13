@@ -46,7 +46,7 @@ export default function Card() {
     setFlipped(true);
 
     // After all flip animations complete, determine loser
-    const totalFlipTime = players.length * 100 + 600; // stagger + flip duration
+    const totalFlipTime = 8000 + 1200; // stagger + flip duration
     setTimeout(() => {
       SFX.success();
       haptic('heavy');
@@ -66,7 +66,7 @@ export default function Card() {
         const loser = { ...players[loserIdx], score: generated[loserIdx].number };
         setResult({ rankings: ranked, loser, gameName: '카드 뽑기' });
         router.push('/result');
-      }, 1500);
+      }, 3000);
     }, totalFlipTime);
   }, [flipped, done, players, setResult, router]);
 
@@ -122,8 +122,8 @@ export default function Card() {
                         : { rotateY: 0 }
                     }
                     transition={{
-                      duration: 0.6,
-                      delay: flipped ? i * 0.1 : 0,
+                      duration: 1.2,
+                      delay: flipped ? i * (8 / players.length) : 0,
                       ease: 'easeOut',
                     }}
                     style={{ transformStyle: 'preserve-3d' }}

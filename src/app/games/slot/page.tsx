@@ -67,7 +67,7 @@ export default function Slot() {
       );
     }, 80);
 
-    // Stop reel 1 at 1s
+    // Stop reel 1 at 5s
     setTimeout(() => {
       setReelsStopped((prev) => [true, prev[1], prev[2]]);
       setDisplaySymbols((prev) =>
@@ -75,9 +75,9 @@ export default function Slot() {
       );
       SFX.tap();
       haptic('light');
-    }, 1000);
+    }, 5000);
 
-    // Stop reel 2 at 1.6s
+    // Stop reel 2 at 8s
     setTimeout(() => {
       setReelsStopped((prev) => [prev[0], true, prev[2]]);
       setDisplaySymbols((prev) =>
@@ -89,9 +89,9 @@ export default function Slot() {
       );
       SFX.tap();
       haptic('light');
-    }, 1600);
+    }, 8000);
 
-    // Stop reel 3 at 2.2s
+    // Stop reel 3 at 11s
     setTimeout(() => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -118,8 +118,8 @@ export default function Slot() {
         const loser = { ...players[loserIdx], score: finalResults[loserIdx].sum };
         setResult({ rankings: ranked, loser, gameName: '슬롯머신' });
         router.push('/result');
-      }, 1500);
-    }, 2200);
+      }, 3000);
+    }, 11000);
   }, [spinning, done, players, setResult, router]);
 
   if (players.length < 2) return null;

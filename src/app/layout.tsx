@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Coffee Derby',
-  description: '누가 커피 살래? 터치 한 번에 결정!',
+  title: 'PPAR - Pick Pet And Run',
+  description: '동물 골라서 터치 한 번! 누가 질까?',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Coffee Derby',
+    title: 'PPAR',
   },
 };
 

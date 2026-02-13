@@ -33,12 +33,12 @@ export default function Roulette() {
     haptic('medium');
 
     const chosenIdx = Math.floor(Math.random() * players.length);
-    const targetAngle = 360 * 5 + (360 - chosenIdx * segmentAngle - segmentAngle / 2);
+    const targetAngle = 360 * 12 + (360 - chosenIdx * segmentAngle - segmentAngle / 2);
     const newRotation = currentRotation.current + targetAngle;
 
     await controls.start({
       rotate: newRotation,
-      transition: { duration: 3, ease: [0.2, 0.8, 0.3, 1] },
+      transition: { duration: 10, ease: [0.2, 0.8, 0.3, 1] },
     });
 
     currentRotation.current = newRotation;
@@ -55,7 +55,7 @@ export default function Roulette() {
       const rankings = [...others, loser];
       setResult({ rankings, loser, gameName: '룰렛' });
       router.push('/result');
-    }, 1500);
+    }, 3000);
   };
 
   return (

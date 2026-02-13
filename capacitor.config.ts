@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.coffeedeerby.app',
-  appName: 'Coffee Derby',
+  appId: 'com.ppar.app',
+  appName: 'PPAR',
   webDir: 'out'
 };
 

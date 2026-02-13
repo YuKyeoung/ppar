@@ -26,11 +26,11 @@ export default function Home() {
       </motion.div>
 
       <h1 className="font-display text-4xl font-black text-coffee-800 text-center mt-3">
-        Coffee Derby
+        PPAR
       </h1>
 
       <p className="text-[15px] font-bold text-coffee-600 mt-2 mb-10 text-center">
-        누가 커피 살래? 터치 한 번에 결정!
+        Pick Pet And Run! 터치 한 번에 승부!
       </p>
 
       <div className="w-full max-w-xs">

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'coffee-derby-v1';
+const CACHE_NAME = 'ppar-v1';
 
 // Cache app shell on install
 self.addEventListener('install', (event) => {
@@ -6,7 +6,7 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME).then((cache) =>
       cache.addAll([
         '/',
-        '/solo/setup',
+        '/setup',
         '/games',
         '/result',
       ])

@@ -1,4 +1,4 @@
-package com.coffeedeerby.app;
+package com.ppar.app;
 
 import com.getcapacitor.BridgeActivity;
 

@@ -71,8 +71,8 @@ export default function Dice() {
         const loser = { ...players[loserIdx], score: finals[loserIdx] };
         setResult({ rankings: ranked, loser, gameName: '주사위' });
         router.push('/result');
-      }, 1500);
-    }, 1500);
+      }, 3000);
+    }, 8000);
   }, [rolling, done, players, setResult, router]);
 
   if (players.length < 2) return null;

@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Coffee Derby</string>
-    <string name="title_activity_main">Coffee Derby</string>
-    <string name="package_name">com.coffeedeerby.app</string>
-    <string name="custom_url_scheme">com.coffeedeerby.app</string>
+    <string name="app_name">PPAR</string>
+    <string name="title_activity_main">PPAR</string>
+    <string name="package_name">com.ppar.app</string>
+    <string name="custom_url_scheme">com.ppar.app</string>
 </resources>
