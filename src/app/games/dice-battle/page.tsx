@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import CountDown from '@/components/game/CountDown';
+import PlayerScoreboard from '@/components/game/PlayerScoreboard';
 import { SFX } from '@/utils/sound';
 import { haptic } from '@/utils/haptic';
 
@@ -19,8 +20,14 @@ export default function DiceBattle() {
   const [rolling, setRolling] = useState(false);
   const [diceValue, setDiceValue] = useState<number | null>(null);
   const [scores, setScores] = useState<number[]>(players.map(() => 0));
+  const rollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleCountdownComplete = useCallback(() => setPhase('playing'), []);
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => { if (rollIntervalRef.current) clearInterval(rollIntervalRef.current); };
+  }, []);
 
   // Guard: redirect if no players (direct access / refresh)
   useEffect(() => {
@@ -37,11 +44,11 @@ export default function DiceBattle() {
     haptic('medium');
 
     let count = 0;
-    const interval = setInterval(() => {
+    rollIntervalRef.current = setInterval(() => {
       setDiceValue(Math.floor(Math.random() * 6));
       count++;
       if (count > 15) {
-        clearInterval(interval);
+        clearInterval(rollIntervalRef.current!);
         const result = Math.floor(Math.random() * 6) + 1;
         setDiceValue(result - 1);
         const newScores = [...scores];
@@ -120,18 +127,7 @@ export default function DiceBattle() {
         </p>
       </div>
 
-      <div className="w-full flex flex-col gap-2">
-        {players.map((p, i) => {
-          const animal = getAnimal(p.animal);
-          return (
-            <div key={p.id} className="flex items-center gap-2.5 py-2.5 px-4 rounded-[14px] bg-gradient-to-br from-white to-[#FBF3EA] shadow-[3px_3px_6px_rgba(139,94,60,0.08),-2px_-2px_4px_rgba(255,255,255,0.7)]">
-              <span className="text-[22px]">{animal?.emoji}</span>
-              <span className="flex-1 font-bold text-sm text-coffee-800">{p.name}</span>
-              <span className="font-black text-xl text-coffee-500">{scores[i] || '-'}</span>
-            </div>
-          );
-        })}
-      </div>
+      <PlayerScoreboard players={players} scores={scores} currentPlayerIdx={currentPlayer} />
     </div>
   );
 }

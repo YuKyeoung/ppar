@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Nunito } from 'next/font/google';
+import Script from 'next/script';
 import './globals.css';
 
 const nunito = Nunito({
@@ -40,11 +41,9 @@ export default function RootLayout({
         <div className="max-w-[393px] mx-auto min-h-dvh relative">
           {children}
         </div>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'))}`,
-          }}
-        />
+        <Script id="sw-register" strategy="afterInteractive">
+          {`if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}`}
+        </Script>
       </body>
     </html>
   );

@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Share game results using the Web Share API.
  * Falls back to clipboard copy on unsupported browsers.

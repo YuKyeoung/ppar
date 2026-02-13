@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import CountDown from '@/components/game/CountDown';
+import PlayerScoreboard from '@/components/game/PlayerScoreboard';
 import { shuffleArray } from '@/utils/random';
 
 const CARD_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -97,18 +98,7 @@ export default function CardDraw() {
         ))}
       </div>
 
-      <div className="w-full flex flex-col gap-2 mt-auto">
-        {players.map((p, i) => {
-          const animal = getAnimal(p.animal);
-          return (
-            <div key={p.id} className="flex items-center gap-2.5 py-2.5 px-4 rounded-[14px] bg-gradient-to-br from-white to-[#FBF3EA] shadow-[3px_3px_6px_rgba(139,94,60,0.08)]">
-              <span className="text-[22px]">{animal?.emoji}</span>
-              <span className="flex-1 font-bold text-sm text-coffee-800">{p.name}</span>
-              <span className="font-black text-xl text-coffee-500">{scores[i] || '-'}</span>
-            </div>
-          );
-        })}
-      </div>
+      <PlayerScoreboard players={players} scores={scores} currentPlayerIdx={currentPlayer} />
     </div>
   );
 }

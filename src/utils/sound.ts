@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Lightweight sound effects using Web Audio API.
  * No external audio files needed — all sounds are synthesized.

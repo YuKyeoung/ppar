@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import CountDown from '@/components/game/CountDown';
+import PlayerScoreboard from '@/components/game/PlayerScoreboard';
 import { SFX } from '@/utils/sound';
 import { haptic } from '@/utils/haptic';
 
@@ -101,18 +102,7 @@ export default function CoinFlip() {
               <span className="font-black text-white text-sm">뒤</span>
             </motion.button>
           </div>
-          <div className="w-full flex flex-col gap-1.5">
-            {players.map((p, i) => {
-              const animal = getAnimal(p.animal);
-              return (
-                <div key={p.id} className="flex items-center gap-2 py-2 px-3 rounded-[12px] bg-white/60 text-sm">
-                  <span>{animal?.emoji}</span>
-                  <span className="font-bold text-coffee-800">{p.name}</span>
-                  <span className="ml-auto font-bold text-coffee-400">{choices[i] ? (choices[i] === 'heads' ? '앞' : '뒤') : '...'}</span>
-                </div>
-              );
-            })}
-          </div>
+          <PlayerScoreboard players={players} scores={choices.map(c => c ? (c === 'heads' ? '앞' : '뒤') : '...')} currentPlayerIdx={currentPlayer} />
         </>
       )}
 

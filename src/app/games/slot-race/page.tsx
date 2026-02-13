@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
 import CountDown from '@/components/game/CountDown';
+import PlayerScoreboard from '@/components/game/PlayerScoreboard';
 import { SFX } from '@/utils/sound';
 import { haptic } from '@/utils/haptic';
 
@@ -97,18 +98,7 @@ export default function SlotRace() {
         {spinning ? '🌀 돌아가는 중...' : '🎰 돌리기!'}
       </button>
 
-      <div className="w-full flex flex-col gap-1.5 mt-auto">
-        {players.map((p, i) => {
-          const a = getAnimal(p.animal);
-          return (
-            <div key={p.id} className="flex items-center gap-2 py-2 px-3 rounded-[12px] bg-white/60 text-sm">
-              <span>{a?.emoji}</span>
-              <span className="font-bold text-coffee-800">{p.name}</span>
-              <span className="ml-auto font-black text-coffee-500">{scores[i]}</span>
-            </div>
-          );
-        })}
-      </div>
+      <PlayerScoreboard players={players} scores={scores} currentPlayerIdx={currentPlayer} />
     </div>
   );
 }

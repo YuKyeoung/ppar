@@ -10,9 +10,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
-    "@types/howler": "^2.2.12",
     "framer-motion": "^12.34.0",
-    "howler": "^2.2.4",
     "next": "14.2.35",
     "qrcode.react": "^4.2.0",
     "react": "^18",

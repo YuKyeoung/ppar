@@ -16,7 +16,9 @@ export default function NunchiGame() {
   const [currentNumber, setCurrentNumber] = useState(1);
   const [alive, setAlive] = useState<boolean[]>(players.map(() => true));
   const [lastAction, setLastAction] = useState('');
+  const [eliminationOrder, setEliminationOrder] = useState<number[]>([]);
   const botTimers = useRef<NodeJS.Timeout[]>([]);
+  const aliveRef = useRef(alive);
 
   const handleCountdownComplete = useCallback(() => setPhase('playing'), []);
 
@@ -25,39 +27,53 @@ export default function NunchiGame() {
     if (players.length < 2) router.replace('/');
   }, [players.length, router]);
 
+  // Keep ref in sync
+  useEffect(() => { aliveRef.current = alive; }, [alive]);
+
   const aliveCount = alive.filter(Boolean).length;
 
+  // Game end: when only 1 player remains, they WIN (first eliminated = loser)
   useEffect(() => {
-    if (phase !== 'playing') return;
-    if (aliveCount <= 1) {
-      const loserIdx = alive.findIndex(Boolean);
-      const others = players.filter((_, i) => i !== loserIdx).map((p, i, arr) => ({ ...p, score: arr.length - i }));
-      const loserCopy = { ...players[loserIdx], score: 0 };
-      const rankings = [...others, loserCopy];
-      setTimeout(() => {
-        setResult({ rankings, loser: loserCopy, gameName: selectedGame?.name || '눈치 게임' });
-        router.push('/result');
-      }, 1500);
-      return;
-    }
+    if (phase !== 'playing' || aliveCount > 1) return;
 
-    // Bot players auto-press after random delay (player 0 is human)
+    const winnerIdx = alive.findIndex(Boolean);
+    // Build rankings: winner first, then reverse elimination order
+    const ranked = [
+      { ...players[winnerIdx], score: players.length },
+      ...eliminationOrder.map((idx, i) => ({
+        ...players[idx],
+        score: eliminationOrder.length - i - 1,
+      })),
+    ];
+    const loser = ranked[ranked.length - 1];
+
+    setTimeout(() => {
+      SFX.fail();
+      haptic('heavy');
+      setResult({ rankings: ranked, loser, gameName: selectedGame?.name || '눈치 게임' });
+      router.push('/result');
+    }, 1500);
+  }, [aliveCount, phase, alive, eliminationOrder, players, setResult, selectedGame, router]);
+
+  // Bot AI: auto-press after random delay
+  useEffect(() => {
+    if (phase !== 'playing' || aliveCount <= 1) return;
+
     botTimers.current.forEach(clearTimeout);
     botTimers.current = [];
     players.forEach((_, i) => {
-      if (i === 0 || !alive[i]) return;
+      if (i === 0 || !aliveRef.current[i]) return;
       const delay = 1000 + Math.random() * 3000;
       botTimers.current.push(setTimeout(() => pressNumber(i), delay));
     });
 
     return () => botTimers.current.forEach(clearTimeout);
-  }, [currentNumber, phase, alive]);
+  }, [currentNumber, phase, aliveCount, players]);
 
   const pressNumber = (playerIdx: number) => {
-    if (!alive[playerIdx]) return;
+    if (!aliveRef.current[playerIdx]) return;
     setCurrentNumber((prev) => {
-      const num = prev;
-      setLastAction(`${players[playerIdx].name}이 ${num}을 눌렀다!`);
+      setLastAction(`${players[playerIdx].name}이 ${prev}을 눌렀다!`);
       return prev + 1;
     });
   };
@@ -69,19 +85,24 @@ export default function NunchiGame() {
     pressNumber(0);
   };
 
-  // Simplified: random elimination when numbers collide
+  // Random elimination when numbers exceed threshold
   useEffect(() => {
-    if (currentNumber > players.length * 2 && aliveCount > 1) {
-      // Random elimination for fun
-      const aliveIndices = alive.map((a, i) => a ? i : -1).filter((i) => i >= 0);
+    if (phase !== 'playing') return;
+    const currentAlive = aliveRef.current;
+    const currentAliveCount = currentAlive.filter(Boolean).length;
+    if (currentNumber > players.length * 2 && currentAliveCount > 1) {
+      const aliveIndices = currentAlive.map((a, i) => a ? i : -1).filter((i) => i >= 0);
       const eliminateIdx = aliveIndices[Math.floor(Math.random() * aliveIndices.length)];
-      const newAlive = [...alive];
+      const newAlive = [...currentAlive];
       newAlive[eliminateIdx] = false;
       setAlive(newAlive);
+      setEliminationOrder((prev) => [...prev, eliminateIdx]);
       setLastAction(`${players[eliminateIdx].name}이 탈락! 🚫`);
+      SFX.fail();
+      haptic('medium');
       setCurrentNumber(1);
     }
-  }, [currentNumber]);
+  }, [currentNumber, phase, players]);
 
   if (players.length < 2) return null;
 

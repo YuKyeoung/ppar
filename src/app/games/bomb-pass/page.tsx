@@ -18,6 +18,10 @@ export default function BombPass() {
   const [shaking, setShaking] = useState(false);
   const totalTime = useRef(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const holderRef = useRef(holder);
+
+  // Keep ref in sync with state
+  useEffect(() => { holderRef.current = holder; }, [holder]);
 
   const handleCountdownComplete = useCallback(() => {
     const duration = 5 + Math.random() * 15;
@@ -33,6 +37,7 @@ export default function BombPass() {
 
   useEffect(() => {
     if (phase !== 'playing') return;
+    setShaking(false);
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         const next = t - 0.1;
@@ -42,9 +47,10 @@ export default function BombPass() {
           setPhase('boom');
           SFX.boom();
           haptic('heavy');
+          const currentHolder = holderRef.current;
           setTimeout(() => {
-            const others = players.filter((_, i) => i !== holder).map((p, i, arr) => ({ ...p, score: arr.length - i }));
-            const loserCopy = { ...players[holder], score: 0 };
+            const others = players.filter((_, i) => i !== currentHolder).map((p, i, arr) => ({ ...p, score: arr.length - i }));
+            const loserCopy = { ...players[currentHolder], score: 0 };
             const rankings = [...others, loserCopy];
             setResult({ rankings, loser: loserCopy, gameName: selectedGame?.name || '폭탄 돌리기' });
             router.push('/result');
@@ -55,7 +61,7 @@ export default function BombPass() {
       });
     }, 100);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [phase]);
+  }, [phase, players, selectedGame, setResult, router]);
 
   if (players.length < 2) return null;
 
