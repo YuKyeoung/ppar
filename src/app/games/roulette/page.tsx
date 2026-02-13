@@ -1,42 +1,39 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useAnimation } from 'framer-motion';
 import { useGameStore } from '@/stores/gameStore';
 import { getAnimal } from '@/constants/animals';
-import CountDown from '@/components/game/CountDown';
 import { SFX } from '@/utils/sound';
 import { haptic } from '@/utils/haptic';
 
 export default function Roulette() {
   const router = useRouter();
-  const { players, setResult, selectedGame } = useGameStore();
-  const [phase, setPhase] = useState<'countdown' | 'playing' | 'done'>('countdown');
+  const { players, setResult } = useGameStore();
   const [spinning, setSpinning] = useState(false);
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [loserIdx, setLoserIdx] = useState<number | null>(null);
   const controls = useAnimation();
   const currentRotation = useRef(0);
 
-  const handleCountdownComplete = useCallback(() => setPhase('playing'), []);
-
-  // Guard: redirect if no players (direct access / refresh)
   useEffect(() => {
     if (players.length < 2) router.replace('/');
   }, [players.length, router]);
 
   if (players.length < 2) return null;
 
+  const segmentAngle = 360 / players.length;
+  const radius = 130;
+
   const spin = async () => {
     if (spinning) return;
     setSpinning(true);
-    setSelectedIdx(null);
+    setLoserIdx(null);
     SFX.tick();
     haptic('medium');
 
-    const loserIdx = Math.floor(Math.random() * players.length);
-    const segmentAngle = 360 / players.length;
-    const targetAngle = 360 * 5 + (360 - loserIdx * segmentAngle - segmentAngle / 2);
+    const chosenIdx = Math.floor(Math.random() * players.length);
+    const targetAngle = 360 * 5 + (360 - chosenIdx * segmentAngle - segmentAngle / 2);
     const newRotation = currentRotation.current + targetAngle;
 
     await controls.start({
@@ -45,49 +42,68 @@ export default function Roulette() {
     });
 
     currentRotation.current = newRotation;
-    setSelectedIdx(loserIdx);
+    setLoserIdx(chosenIdx);
     setSpinning(false);
     SFX.fail();
     haptic('heavy');
 
     setTimeout(() => {
-      const others = players.filter((_, i) => i !== loserIdx).map((p, i, arr) => ({ ...p, score: arr.length - i }));
-      const loserCopy = { ...players[loserIdx], score: 0 };
-      const rankings = [...others, loserCopy];
-      setResult({
-        rankings,
-        loser: loserCopy,
-        gameName: selectedGame?.name || '룰렛',
-      });
+      const loser = { ...players[chosenIdx], score: 0 };
+      const others = players
+        .filter((_, i) => i !== chosenIdx)
+        .map((p, i, arr) => ({ ...p, score: arr.length - i }));
+      const rankings = [...others, loser];
+      setResult({ rankings, loser, gameName: '룰렛' });
       router.push('/result');
     }, 1500);
   };
 
-  if (phase === 'countdown') {
-    return <CountDown onComplete={handleCountdownComplete} />;
-  }
-
-  const segmentAngle = 360 / players.length;
-  const radius = 130;
-
   return (
     <div className="flex flex-col items-center min-h-dvh px-5 py-6 gap-5">
       <div className="flex items-center gap-3 w-full">
-        <motion.button whileTap={{ y: 2 }} onClick={() => router.push('/games')} className="w-11 h-11 rounded-[14px] border-none bg-gradient-to-br from-white to-coffee-100 shadow-clay flex items-center justify-center text-xl cursor-pointer">←</motion.button>
+        <motion.button
+          whileTap={{ y: 2 }}
+          onClick={() => router.push('/games')}
+          className="w-11 h-11 rounded-[14px] border-none bg-gradient-to-br from-white to-coffee-100 shadow-clay flex items-center justify-center text-xl cursor-pointer"
+        >
+          ←
+        </motion.button>
         <h2 className="text-[22px] font-black text-coffee-800">🎡 룰렛</h2>
       </div>
 
+      {/* Player Avatars */}
+      <div className="flex flex-wrap justify-center gap-3">
+        {players.map((p) => {
+          const animal = getAnimal(p.animal);
+          return (
+            <div key={p.id} className="flex flex-col items-center gap-1">
+              <span className="text-2xl">{animal?.emoji}</span>
+              <span className="text-[10px] font-bold text-coffee-600">{p.name}</span>
+            </div>
+          );
+        })}
+      </div>
+
       <p className="text-sm font-bold text-coffee-400">
-        {spinning ? '돌아가는 중...' : selectedIdx !== null ? `${players[selectedIdx].name} 당첨!` : '탭해서 돌려!'}
+        {spinning
+          ? '돌아가는 중...'
+          : loserIdx !== null
+            ? `${players[loserIdx].name} 당첨!`
+            : '탭해서 룰렛을 돌려보세요!'}
       </p>
 
-      <div className="relative flex items-center justify-center" style={{ width: radius * 2 + 20, height: radius * 2 + 20 }}>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 text-3xl z-10">▼</div>
+      {/* Wheel */}
+      <div
+        className="relative flex items-center justify-center"
+        style={{ width: radius * 2 + 20, height: radius * 2 + 20 }}
+      >
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 text-3xl z-10">
+          ▼
+        </div>
         <motion.div
           animate={controls}
           className="relative rounded-full bg-gradient-to-br from-white to-coffee-100 shadow-clay"
           style={{ width: radius * 2, height: radius * 2 }}
-          onClick={spin}
         >
           {players.map((p, i) => {
             const animal = getAnimal(p.animal);
@@ -95,27 +111,39 @@ export default function Roulette() {
             const x = Math.cos(angle) * (radius * 0.65) + radius;
             const y = Math.sin(angle) * (radius * 0.65) + radius;
             return (
-              <div
+              <motion.div
                 key={p.id}
                 className="absolute flex flex-col items-center"
                 style={{ left: x, top: y, transform: 'translate(-50%, -50%)' }}
+                animate={
+                  loserIdx === i
+                    ? { scale: [1, 1.4, 1.2], opacity: 1 }
+                    : loserIdx !== null
+                      ? { opacity: 0.4 }
+                      : {}
+                }
+                transition={{ duration: 0.4 }}
               >
                 <span className="text-3xl">{animal?.emoji}</span>
-                <span className="text-[10px] font-bold text-coffee-600 mt-0.5">{p.name}</span>
-              </div>
+                <span className="text-[10px] font-bold text-coffee-600 mt-0.5">
+                  {p.name}
+                </span>
+              </motion.div>
             );
           })}
         </motion.div>
       </div>
 
+      {/* Spin Button */}
       <div className="mt-auto w-full">
-        <button
+        <motion.button
+          whileTap={{ scale: 0.96 }}
           onClick={spin}
-          disabled={spinning}
+          disabled={spinning || loserIdx !== null}
           className="w-full py-4 rounded-clay border-none font-display font-black text-lg bg-gradient-to-br from-accent to-[#FF9F5F] text-white shadow-clay-accent cursor-pointer disabled:opacity-50"
         >
           {spinning ? '🌀 돌아가는 중...' : '🎡 룰렛 돌리기!'}
-        </button>
+        </motion.button>
       </div>
     </div>
   );

@@ -1,17 +1,9 @@
 import type { Metadata, Viewport } from 'next';
-import { Nunito } from 'next/font/google';
-import Script from 'next/script';
 import './globals.css';
-
-const nunito = Nunito({
-  subsets: ['latin'],
-  weight: ['400', '700', '900'],
-  variable: '--font-nunito',
-});
 
 export const metadata: Metadata = {
   title: 'Coffee Derby',
-  description: '동물 친구들과 커피내기 한 판!',
+  description: '누가 커피 살래? 터치 한 번에 결정!',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -35,15 +27,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body
-        className={`${nunito.variable} font-display bg-cream min-h-dvh antialiased`}
-      >
+      <body className="font-display bg-cream min-h-dvh antialiased">
         <div className="max-w-[393px] mx-auto min-h-dvh relative">
           {children}
         </div>
-        <Script id="sw-register" strategy="afterInteractive">
-          {`if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}`}
-        </Script>
       </body>
     </html>
   );

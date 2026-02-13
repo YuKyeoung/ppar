@@ -9,10 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.95.3",
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
+    "@capacitor/haptics": "^8.0.0",
+    "@capacitor/ios": "^8.1.0",
+    "@capacitor/status-bar": "^8.0.1",
     "framer-motion": "^12.34.0",
     "next": "14.2.35",
-    "qrcode.react": "^4.2.0",
     "react": "^18",
     "react-dom": "^18",
     "zustand": "^5.0.11"
