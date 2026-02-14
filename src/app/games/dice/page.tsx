@@ -19,7 +19,7 @@ const DOTS: Record<number, number[][]> = {
   6: [[0, 0], [0, 2], [1, 0], [1, 2], [2, 0], [2, 2]],
 };
 
-function DiceFaceFlat({ value, size }: { value: number; size: number }) {
+function DiceFace({ value, size, bg }: { value: number; size: number; bg?: string }) {
   const dots = DOTS[value] || DOTS[1];
   const dotSize = size * 0.16;
   const padding = size * 0.2;
@@ -31,9 +31,9 @@ function DiceFaceFlat({ value, size }: { value: number; size: number }) {
       style={{
         width: size,
         height: size,
-        background: 'linear-gradient(145deg, #FFFEF9, #F0EBE0)',
+        background: bg || 'linear-gradient(145deg, #FFFEF9, #F0EBE0)',
         border: '2px solid rgba(139,94,60,0.1)',
-        boxShadow:
+        boxShadow: bg ? 'none' :
           '4px 4px 8px rgba(139,94,60,0.15), -2px -2px 6px rgba(255,255,255,0.8), inset 1px 1px 2px rgba(255,255,255,0.6)',
       }}
     >
@@ -55,15 +55,71 @@ function DiceFaceFlat({ value, size }: { value: number; size: number }) {
   );
 }
 
+// 3D rolling cube - shows all 6 faces rotating
+function Dice3D({ size, animId }: { size: number; animId: number }) {
+  const half = size / 2;
+
+  return (
+    <div style={{ perspective: 300, width: size, height: size }}>
+      <div
+        key={animId}
+        className="dice-spin"
+        style={{
+          width: size,
+          height: size,
+          position: 'relative',
+          transformStyle: 'preserve-3d',
+        }}
+      >
+        {/* Front face - 1 */}
+        <div className="absolute inset-0" style={{ transform: `translateZ(${half}px)` }}>
+          <DiceFace value={1} size={size} bg="linear-gradient(145deg, #FFFEF9, #F0EBE0)" />
+        </div>
+        {/* Back face - 6 */}
+        <div className="absolute inset-0" style={{ transform: `rotateY(180deg) translateZ(${half}px)` }}>
+          <DiceFace value={6} size={size} bg="linear-gradient(145deg, #FFFEF9, #F0EBE0)" />
+        </div>
+        {/* Right face - 3 */}
+        <div className="absolute inset-0" style={{ transform: `rotateY(90deg) translateZ(${half}px)` }}>
+          <DiceFace value={3} size={size} bg="linear-gradient(145deg, #FFFEF9, #F0EBE0)" />
+        </div>
+        {/* Left face - 4 */}
+        <div className="absolute inset-0" style={{ transform: `rotateY(-90deg) translateZ(${half}px)` }}>
+          <DiceFace value={4} size={size} bg="linear-gradient(145deg, #FFFEF9, #F0EBE0)" />
+        </div>
+        {/* Top face - 2 */}
+        <div className="absolute inset-0" style={{ transform: `rotateX(90deg) translateZ(${half}px)` }}>
+          <DiceFace value={2} size={size} bg="linear-gradient(145deg, #FFFEF9, #F0EBE0)" />
+        </div>
+        {/* Bottom face - 5 */}
+        <div className="absolute inset-0" style={{ transform: `rotateX(-90deg) translateZ(${half}px)` }}>
+          <DiceFace value={5} size={size} bg="linear-gradient(145deg, #FFFEF9, #F0EBE0)" />
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes diceSpin {
+          0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+          25% { transform: rotateX(90deg) rotateY(180deg) rotateZ(45deg); }
+          50% { transform: rotateX(180deg) rotateY(360deg) rotateZ(0deg); }
+          75% { transform: rotateX(270deg) rotateY(540deg) rotateZ(-45deg); }
+          100% { transform: rotateX(360deg) rotateY(720deg) rotateZ(0deg); }
+        }
+        .dice-spin {
+          animation: diceSpin 0.8s infinite linear;
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export default function DicePage() {
   const router = useRouter();
   const { players, setResult } = useGameStore();
   const [rolling, setRolling] = useState(false);
   const [done, setDone] = useState(false);
-  const [displayValues, setDisplayValues] = useState<number[]>(() =>
-    players.map(() => 1)
-  );
   const [finalValues, setFinalValues] = useState<number[]>([]);
+  const [animId, setAnimId] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -79,20 +135,13 @@ export default function DicePage() {
   const roll = useCallback(() => {
     if (rolling || done) return;
     setRolling(true);
+    setAnimId((prev) => prev + 1);
     SFX.roll();
     haptic('medium');
 
     const finals = players.map(() => Math.floor(Math.random() * 6) + 1);
 
-    // Rapid face flicker for 2s
-    intervalRef.current = setInterval(() => {
-      setDisplayValues(players.map(() => Math.floor(Math.random() * 6) + 1));
-    }, 70);
-
     setTimeout(() => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      intervalRef.current = null;
-      setDisplayValues(finals);
       setFinalValues(finals);
       setRolling(false);
       setDone(true);
@@ -157,26 +206,25 @@ export default function DicePage() {
                 dimmed={done && !isLoser}
               >
                 <div className="flex flex-col items-center gap-2">
-                  {/* Dice: shakes when rolling, still when done */}
-                  <motion.div
-                    animate={
-                      rolling
-                        ? {
-                            rotate: [0, 12, -12, 8, -8, 0],
-                            y: [0, -6, 4, -3, 2, 0],
-                          }
-                        : done
-                          ? { scale: [1, 1.1, 1] }
-                          : {}
-                    }
-                    transition={
-                      rolling
-                        ? { duration: 0.25, repeat: Infinity, ease: 'easeInOut' }
-                        : { duration: 0.3 }
-                    }
-                  >
-                    <DiceFaceFlat value={displayValues[i]} size={64} />
-                  </motion.div>
+                  {rolling ? (
+                    /* 3D spinning cube during roll */
+                    <motion.div
+                      animate={{ y: [0, -8, 0] }}
+                      transition={{ duration: 0.3, repeat: Infinity, ease: 'easeInOut' }}
+                    >
+                      <Dice3D size={64} animId={animId} />
+                    </motion.div>
+                  ) : (
+                    /* Flat 2D face for idle + result */
+                    <motion.div
+                      animate={
+                        done ? { scale: [1, 1.1, 1] } : {}
+                      }
+                      transition={{ duration: 0.3 }}
+                    >
+                      <DiceFace value={done ? finalValues[i] : 1} size={64} />
+                    </motion.div>
+                  )}
 
                   {done && finalValues[i] !== undefined && (
                     <motion.span
