@@ -11,6 +11,20 @@ import TapButton from '@/components/game/TapButton';
 
 type Phase = 'ready' | 'countdown' | 'racing' | 'done';
 
+type RaceEvent = {
+  playerIdx: number;
+  type: 'slip' | 'boost' | 'stumble' | 'turbo';
+  emoji: string;
+  framesLeft: number;
+};
+
+const EVENT_DEFS = {
+  slip:    { emoji: '🍌', duration: 35, speedMult: 0.05 },
+  stumble: { emoji: '🪨', duration: 45, speedMult: 0.25 },
+  boost:   { emoji: '💨', duration: 50, speedMult: 2.2 },
+  turbo:   { emoji: '⚡', duration: 35, speedMult: 2.8 },
+} as const;
+
 export default function RaceGame() {
   const router = useRouter();
   const { players, setResult } = useGameStore();
@@ -20,6 +34,7 @@ export default function RaceGame() {
     players.map(() => 0)
   );
   const [finishOrder, setFinishOrder] = useState<number[]>([]);
+  const [activeEvents, setActiveEvents] = useState<RaceEvent[]>([]);
   const animFrame = useRef<number>(0);
   const speeds = useRef<number[]>([]);
   const posRef = useRef<number[]>([]);
@@ -65,19 +80,24 @@ export default function RaceGame() {
   const startRace = useCallback(() => {
     setPhase('racing');
 
-    // Per-player state: base speed + momentum (smoothly varying boost)
+    // Gear speeds: slow / normal / fast
+    const GEARS = [0.07, 0.15, 0.24];
+
     const playerState = players.map(() => ({
-      base: 0.13 + Math.random() * 0.04,
-      momentum: 0,            // current momentum (-0.1 ~ +0.15)
-      momentumTarget: 0,      // target momentum (smooth transition)
-      sprintTimer: 0,         // frames left in sprint
+      gear: 1,                // 0=slow, 1=normal, 2=fast
+      gearTimer: 60 + Math.floor(Math.random() * 60),
+      eventMult: 1,           // multiplier from active event
+      eventTimer: 0,
     }));
-    speeds.current = playerState.map((s) => s.base);
+
+    speeds.current = playerState.map(() => GEARS[1]);
     posRef.current = players.map(() => 0);
     finishRef.current = [];
+    const eventsRef: RaceEvent[] = [];
 
     let lastTime = performance.now();
     let frameTick = 0;
+    let nextEventTick = 70 + Math.floor(Math.random() * 40);
 
     const tick = (now: number) => {
       const dt = Math.min(now - lastTime, 50);
@@ -91,30 +111,75 @@ export default function RaceGame() {
         .map((p, i) => ({ i, p }))
         .sort((a, b) => b.p - a.p);
 
-      // Every ~90 frames (~1.5s), assign new momentum targets
-      if (frameTick % 90 === 0) {
-        for (let i = 0; i < players.length; i++) {
-          playerState[i].momentumTarget = (Math.random() - 0.45) * 0.14;
+      // --- Gear shift per player ---
+      for (let i = 0; i < players.length; i++) {
+        const ps = playerState[i];
+        if (newPos[i] >= 100) continue;
+        ps.gearTimer--;
+        if (ps.gearTimer <= 0) {
+          // Shift to a random different gear
+          const choices = [0, 1, 1, 2].filter((g) => g !== ps.gear);
+          ps.gear = choices[Math.floor(Math.random() * choices.length)];
+          ps.gearTimer = 50 + Math.floor(Math.random() * 70);
         }
       }
 
-      // Every ~120 frames (~2s), trigger a random sprint event
-      if (frameTick % 120 === 0) {
-        // Pick a random non-finished player for sprint (bias toward trailing)
-        const candidates = ranked
-          .filter((r) => newPos[r.i] < 100)
-          .map((r, ri) => ({ i: r.i, weight: 1 + ri * 2 }));
-        const totalWeight = candidates.reduce((s, c) => s + c.weight, 0);
-        let roll = Math.random() * totalWeight;
-        for (const c of candidates) {
-          roll -= c.weight;
-          if (roll <= 0) {
-            playerState[c.i].sprintTimer = 30 + Math.floor(Math.random() * 30);
-            break;
+      // --- Random event spawn ---
+      if (frameTick >= nextEventTick) {
+        const active = ranked.filter((r) => newPos[r.i] < 95 && newPos[r.i] > 3);
+        if (active.length > 0) {
+          // Decide: bad event targets leader, good event targets trailing
+          const isBadEvent = Math.random() < 0.55;
+          let targetIdx: number;
+
+          if (isBadEvent) {
+            // Bad event: bias heavily toward leader
+            const weights = active.map((_, ri) => Math.max(1, active.length - ri));
+            const total = weights.reduce((a, b) => a + b, 0);
+            let roll = Math.random() * total;
+            let picked = 0;
+            for (let wi = 0; wi < weights.length; wi++) {
+              roll -= weights[wi];
+              if (roll <= 0) { picked = wi; break; }
+            }
+            targetIdx = active[picked].i;
+          } else {
+            // Good event: bias toward trailing players
+            const weights = active.map((_, ri) => 1 + ri * 2);
+            const total = weights.reduce((a, b) => a + b, 0);
+            let roll = Math.random() * total;
+            let picked = 0;
+            for (let wi = 0; wi < weights.length; wi++) {
+              roll -= weights[wi];
+              if (roll <= 0) { picked = wi; break; }
+            }
+            targetIdx = active[picked].i;
+          }
+
+          // Don't stack events on same player
+          if (playerState[targetIdx].eventTimer <= 0) {
+            const type = isBadEvent
+              ? (Math.random() < 0.5 ? 'slip' : 'stumble')
+              : (Math.random() < 0.5 ? 'boost' : 'turbo');
+            const def = EVENT_DEFS[type];
+            playerState[targetIdx].eventMult = def.speedMult;
+            playerState[targetIdx].eventTimer = def.duration;
+
+            eventsRef.push({
+              playerIdx: targetIdx,
+              type,
+              emoji: def.emoji,
+              framesLeft: def.duration,
+            });
+
+            SFX.tap();
+            haptic('medium');
           }
         }
+        nextEventTick = frameTick + 70 + Math.floor(Math.random() * 50);
       }
 
+      // --- Update positions ---
       for (let ri = 0; ri < players.length; ri++) {
         const i = ranked[ri].i;
         if (newPos[i] >= 100) continue;
@@ -123,35 +188,26 @@ export default function RaceGame() {
         const rank = ri;
         const distBehind = ranked[0].p - newPos[i];
 
-        // Smooth momentum transition
-        ps.momentum += (ps.momentumTarget - ps.momentum) * 0.08;
-
-        // Re-roll base speed occasionally
-        if (Math.random() < 0.02) {
-          ps.base = 0.13 + Math.random() * 0.04;
+        // Tick event timer
+        if (ps.eventTimer > 0) {
+          ps.eventTimer--;
+          if (ps.eventTimer <= 0) ps.eventMult = 1;
         }
 
-        // Sprint boost (temporary big speed increase)
-        let sprintBoost = 0;
-        if (ps.sprintTimer > 0) {
-          sprintBoost = 0.12;
-          ps.sprintTimer--;
-        }
+        // Base speed from gear
+        const gearSpeed = GEARS[ps.gear];
 
-        // Frame noise: bigger range for lower ranks
-        const noiseRange = 0.06 + rank * 0.10;
-        const noise = (Math.random() - 0.4) * noiseRange;
+        // Small per-frame noise
+        const noise = (Math.random() - 0.45) * 0.04;
 
-        // Rubber-band: trailing players get boost proportional to gap
-        const rubberBand = distBehind * 0.006;
+        // Rank-based comeback bonus
+        const comeback = rank * 0.015;
 
-        // Leader drag: 1st place occasionally stumbles
-        const leaderDrag = rank === 0 ? 0.025 : 0;
+        // Rubber-band for large gaps
+        const rubberBand = distBehind > 10 ? (distBehind - 10) * 0.004 : 0;
 
-        const speed = Math.max(
-          0.03,
-          ps.base + ps.momentum + sprintBoost + noise + rubberBand - leaderDrag,
-        );
+        const rawSpeed = gearSpeed + noise + comeback + rubberBand;
+        const speed = Math.max(0.03, rawSpeed * ps.eventMult);
         newPos[i] = Math.min(100, newPos[i] + speed * (dt / 16));
 
         if (newPos[i] >= 100 && !finishRef.current.includes(i)) {
@@ -165,14 +221,22 @@ export default function RaceGame() {
         }
       }
 
+      // --- Update event display ---
+      for (let ei = eventsRef.length - 1; ei >= 0; ei--) {
+        eventsRef[ei].framesLeft--;
+        if (eventsRef[ei].framesLeft <= 0) eventsRef.splice(ei, 1);
+      }
+
       posRef.current = newPos;
       setPositions([...newPos]);
+      setActiveEvents([...eventsRef]);
 
       if (finishRef.current.length < players.length) {
         animFrame.current = requestAnimationFrame(tick);
       } else {
         setFinishOrder([...finishRef.current]);
         setPhase('done');
+        setActiveEvents([]);
         SFX.fanfare();
         haptic('heavy');
 
@@ -273,8 +337,8 @@ export default function RaceGame() {
                   className="absolute top-1/2 -translate-y-1/2 flex items-center"
                   style={{ left: `${Math.min(pos, 92)}%` }}
                 >
-                  {/* Dust particles when racing */}
-                  {isRacing && pos < 95 && pos > 2 && (
+                  {/* Dust trail when racing normally */}
+                  {isRacing && pos < 95 && pos > 2 && !activeEvents.find((e) => e.playerIdx === i && (e.type === 'slip' || e.type === 'stumble')) && (
                     <div className="absolute -left-4 top-1/2 -translate-y-1/2">
                       <motion.span
                         className="text-xs text-coffee-300 opacity-60"
@@ -289,6 +353,20 @@ export default function RaceGame() {
                         💨
                       </motion.span>
                     </div>
+                  )}
+
+                  {/* Active event emoji */}
+                  {activeEvents.find((e) => e.playerIdx === i) && (
+                    <motion.div
+                      className="absolute -top-5 left-1/2 -translate-x-1/2 z-30"
+                      initial={{ scale: 0, y: 5 }}
+                      animate={{ scale: [1.3, 1, 1.3], y: [-2, -6, -2] }}
+                      transition={{ duration: 0.4, repeat: Infinity }}
+                    >
+                      <span className="text-lg drop-shadow-md">
+                        {activeEvents.find((e) => e.playerIdx === i)?.emoji}
+                      </span>
+                    </motion.div>
                   )}
 
                   {/* Animal with running animation */}
