@@ -9,6 +9,11 @@ import { SFX } from '@/utils/sound';
 import { haptic } from '@/utils/haptic';
 import TapButton from '@/components/game/TapButton';
 
+// Distinct segment colors
+const SEGMENT_COLORS = [
+  '#FFE0B2', '#FFCCBC', '#D1C4E9', '#B2DFDB', '#F8BBD0', '#C8E6C9',
+];
+
 export default function Roulette() {
   const router = useRouter();
   const { players, setResult } = useGameStore();
@@ -59,6 +64,18 @@ export default function Roulette() {
     }, 3000);
   };
 
+  // Build SVG pie segments
+  const buildSegmentPath = (index: number) => {
+    const startAngle = (index * segmentAngle - 90) * (Math.PI / 180);
+    const endAngle = ((index + 1) * segmentAngle - 90) * (Math.PI / 180);
+    const x1 = Math.cos(startAngle) * radius + radius;
+    const y1 = Math.sin(startAngle) * radius + radius;
+    const x2 = Math.cos(endAngle) * radius + radius;
+    const y2 = Math.sin(endAngle) * radius + radius;
+    const largeArc = segmentAngle > 180 ? 1 : 0;
+    return `M ${radius} ${radius} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+  };
+
   return (
     <div className="flex flex-col items-center min-h-dvh px-5 py-6 gap-5">
       <div className="flex items-center gap-3 w-full">
@@ -72,13 +89,17 @@ export default function Roulette() {
         <h2 className="text-[22px] font-black text-coffee-800">🎡 룰렛</h2>
       </div>
 
-      {/* Player Avatars */}
+      {/* Player legend */}
       <div className="flex flex-wrap justify-center gap-3">
-        {players.map((p) => {
+        {players.map((p, i) => {
           const animal = getAnimal(p.animal);
           return (
-            <div key={p.id} className="flex flex-col items-center gap-1">
-              <span className="text-2xl">{animal?.emoji}</span>
+            <div key={p.id} className="flex items-center gap-1.5">
+              <div
+                className="w-3 h-3 rounded-sm"
+                style={{ background: SEGMENT_COLORS[i % SEGMENT_COLORS.length] }}
+              />
+              <span className="text-lg">{animal?.emoji}</span>
               <span className="text-[10px] font-bold text-coffee-600">{p.name}</span>
             </div>
           );
@@ -98,19 +119,40 @@ export default function Roulette() {
         className="relative flex items-center justify-center"
         style={{ width: radius * 2 + 20, height: radius * 2 + 20 }}
       >
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 text-3xl z-10">
+        {/* Pointer */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 text-3xl z-10 drop-shadow-md">
           ▼
         </div>
+
         <motion.div
           animate={controls}
-          className="relative rounded-full bg-gradient-to-br from-white to-coffee-100 shadow-clay"
+          className="relative rounded-full shadow-clay overflow-hidden"
           style={{ width: radius * 2, height: radius * 2 }}
         >
+          {/* SVG with colored segments and divider lines */}
+          <svg
+            width={radius * 2}
+            height={radius * 2}
+            className="absolute inset-0"
+          >
+            {/* Colored segments */}
+            {players.map((_, i) => (
+              <path
+                key={`seg-${i}`}
+                d={buildSegmentPath(i)}
+                fill={SEGMENT_COLORS[i % SEGMENT_COLORS.length]}
+                stroke="white"
+                strokeWidth={2.5}
+              />
+            ))}
+          </svg>
+
+          {/* Player labels on wheel */}
           {players.map((p, i) => {
             const animal = getAnimal(p.animal);
-            const angle = (i * segmentAngle - 90) * (Math.PI / 180);
-            const x = Math.cos(angle) * (radius * 0.65) + radius;
-            const y = Math.sin(angle) * (radius * 0.65) + radius;
+            const angle = (i * segmentAngle + segmentAngle / 2 - 90) * (Math.PI / 180);
+            const x = Math.cos(angle) * (radius * 0.6) + radius;
+            const y = Math.sin(angle) * (radius * 0.6) + radius;
             return (
               <motion.div
                 key={p.id}
@@ -125,13 +167,26 @@ export default function Roulette() {
                 }
                 transition={{ duration: 0.4 }}
               >
-                <span className="text-3xl">{animal?.emoji}</span>
-                <span className="text-[10px] font-bold text-coffee-600 mt-0.5">
+                <span className="text-2xl drop-shadow-sm">{animal?.emoji}</span>
+                <span className="text-[9px] font-black text-coffee-700 mt-0.5 bg-white/60 rounded px-1">
                   {p.name}
                 </span>
               </motion.div>
             );
           })}
+
+          {/* Center circle */}
+          <div
+            className="absolute rounded-full bg-gradient-to-br from-white to-cream shadow-clay-inset flex items-center justify-center"
+            style={{
+              width: 36,
+              height: 36,
+              left: radius - 18,
+              top: radius - 18,
+            }}
+          >
+            <span className="text-sm">☕</span>
+          </div>
         </motion.div>
       </div>
 
