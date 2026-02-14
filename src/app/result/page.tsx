@@ -132,7 +132,6 @@ export default function ResultPage() {
         <Button
           variant="secondary"
           onClick={() => {
-            clear();
             router.push('/setup');
           }}
         >
