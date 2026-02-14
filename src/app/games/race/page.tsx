@@ -65,10 +65,9 @@ export default function RaceGame() {
   const startRace = useCallback(() => {
     setPhase('racing');
 
-    // Each player gets a base speed with randomness
-    const baseSpeed = 0.15 + Math.random() * 0.05;
+    // Small initial speed variance per player
     speeds.current = players.map(
-      () => baseSpeed + (Math.random() - 0.5) * 0.12
+      () => 0.15 + (Math.random() - 0.5) * 0.03
     );
     posRef.current = players.map(() => 0);
     finishRef.current = [];
@@ -76,18 +75,39 @@ export default function RaceGame() {
     let lastTime = performance.now();
 
     const tick = (now: number) => {
-      const dt = Math.min(now - lastTime, 50); // cap delta
+      const dt = Math.min(now - lastTime, 50);
       lastTime = now;
 
       const newPos = [...posRef.current];
 
-      for (let i = 0; i < players.length; i++) {
+      // Rank players by current position (descending)
+      const ranked = newPos
+        .map((p, i) => ({ i, p }))
+        .sort((a, b) => b.p - a.p);
+
+      for (let ri = 0; ri < players.length; ri++) {
+        const i = ranked[ri].i;
         if (newPos[i] >= 100) continue;
 
-        // Add micro-randomness each frame for exciting races
-        const burst = Math.random() < 0.02 ? 0.3 : 0; // occasional speed burst
-        const drag = Math.random() < 0.01 ? -0.15 : 0; // occasional slowdown
-        const speed = speeds.current[i] + burst + drag;
+        const rank = ri; // 0 = leader
+        const distBehind = ranked[0].p - newPos[i];
+
+        // Re-roll base speed occasionally (speed varies over time)
+        if (Math.random() < 0.03) {
+          speeds.current[i] = 0.15 + (Math.random() - 0.5) * 0.03;
+        }
+
+        // Frame noise: bigger range for lower ranks (comeback chance)
+        const noiseRange = 0.10 + rank * 0.14;
+        const noise = (Math.random() - 0.35) * noiseRange;
+
+        // Rubber-band: trailing players get boost proportional to gap
+        const rubberBand = distBehind * 0.01;
+
+        // Leader penalty
+        const penalty = rank === 0 ? 0.035 : 0;
+
+        const speed = Math.max(0.02, speeds.current[i] + noise + rubberBand - penalty);
         newPos[i] = Math.min(100, newPos[i] + speed * (dt / 16));
 
         if (newPos[i] >= 100 && !finishRef.current.includes(i)) {
@@ -107,7 +127,6 @@ export default function RaceGame() {
       if (finishRef.current.length < players.length) {
         animFrame.current = requestAnimationFrame(tick);
       } else {
-        // All finished
         setFinishOrder([...finishRef.current]);
         setPhase('done');
         SFX.fanfare();
@@ -116,12 +135,12 @@ export default function RaceGame() {
         setTimeout(() => {
           const order = finishRef.current;
           const loserIdx = order[order.length - 1];
-          const ranked = order.map((playerIdx, rank) => ({
+          const rankings = order.map((playerIdx, rank) => ({
             ...players[playerIdx],
             score: players.length - rank,
           }));
           setResult({
-            rankings: ranked,
+            rankings,
             loser: { ...players[loserIdx], score: 0 },
             gameName: '달리기 경주',
           });
@@ -215,6 +234,7 @@ export default function RaceGame() {
                     <div className="absolute -left-4 top-1/2 -translate-y-1/2">
                       <motion.span
                         className="text-xs text-coffee-300 opacity-60"
+                        style={{ display: 'inline-block', scaleX: -1 }}
                         animate={{ opacity: [0.6, 0, 0.6], x: [-2, -10] }}
                         transition={{
                           duration: 0.3,
