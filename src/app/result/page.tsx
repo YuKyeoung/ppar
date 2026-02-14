@@ -136,7 +136,7 @@ export default function ResultPage() {
             router.push('/');
           }}
         >
-          🐾 멤버 다시 고르기
+          🐾 동물 다시 고르기
         </Button>
       </div>
     </div>
