@@ -20,7 +20,7 @@ const lastStyle =
 
 export default function ResultPage() {
   const router = useRouter();
-  const { result, players, clear } = useGameStore();
+  const { result, players } = useGameStore();
 
   // Guard: redirect if no players or no result
   useEffect(() => {
