@@ -72,6 +72,8 @@ export default function LadderGame() {
   const [phase, setPhase] = useState<'ready' | 'tracing' | 'done'>('ready');
   const [tracingIdx, setTracingIdx] = useState(-1);
   const [revealedPaths, setRevealedPaths] = useState<Set<number>>(new Set());
+  // Track which bottom columns have been revealed (endCol -> playerIdx)
+  const [arrivedPlayers, setArrivedPlayers] = useState<Map<number, number>>(new Map());
   // Animated tracer ball position
   const [tracerPos, setTracerPos] = useState<{ x: number; y: number } | null>(
     null
@@ -191,7 +193,8 @@ export default function LadderGame() {
     haptic('medium');
     setPhase('tracing');
 
-    // Trace one at a time for dramatic effect
+    let foundLoser = false;
+
     for (let i = 0; i < players.length; i++) {
       setTracingIdx(i);
       SFX.tick();
@@ -202,34 +205,65 @@ export default function LadderGame() {
         next.add(i);
         return next;
       });
+
+      // Show this player's arrival result
+      const endCol = paths[i].endCol;
+      setArrivedPlayers((prev) => {
+        const next = new Map(prev);
+        next.set(endCol, i);
+        return next;
+      });
+
+      // If this player landed on coffee, stop immediately
+      if (endCol === coffeeCol) {
+        foundLoser = true;
+        SFX.fail();
+        haptic('heavy');
+        setPhase('done');
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const loser = players[i];
+        const rankings = players
+          .map((p, pi) => ({
+            ...p,
+            score: pi === i ? 0 : 1,
+          }))
+          .sort((a, b) => b.score - a.score);
+
+        setResult({
+          rankings,
+          loser: { ...loser, score: 0 },
+          gameName: '사다리 타기',
+        });
+        router.push('/result');
+        return;
+      }
     }
 
-    setPhase('done');
-    SFX.fail();
-    haptic('heavy');
+    // All traced without early exit (shouldn't happen normally)
+    if (!foundLoser) {
+      setPhase('done');
+      SFX.fail();
+      haptic('heavy');
 
-    setTimeout(() => {
-      const loser = players[loserIdx];
-      const rankings = players
-        .map((p, i) => ({
-          ...p,
-          score:
-            i === loserIdx
-              ? 0
-              : players.length -
-                (paths[i].endCol === coffeeCol
-                  ? players.length
-                  : Math.abs(paths[i].endCol - coffeeCol)),
-        }))
-        .sort((a, b) => b.score - a.score);
+      setTimeout(() => {
+        const loser = players[loserIdx];
+        const rankings = players
+          .map((p, i) => ({
+            ...p,
+            score: i === loserIdx ? 0 : 1,
+          }))
+          .sort((a, b) => b.score - a.score);
 
-      setResult({
-        rankings,
-        loser: { ...loser, score: 0 },
-        gameName: '사다리 타기',
-      });
-      router.push('/result');
-    }, 2000);
+        setResult({
+          rankings,
+          loser: { ...loser, score: 0 },
+          gameName: '사다리 타기',
+        });
+        router.push('/result');
+      }, 2000);
+    }
   }, [
     phase,
     players,
@@ -426,26 +460,31 @@ export default function LadderGame() {
           )}
         </svg>
 
-        {/* Bottom labels - hidden until tracing starts */}
+        {/* Bottom labels - reveal as each player arrives */}
         <div className="flex" style={{ height: 48 }}>
           {players.map((_, i) => {
             const isCoffee = i === coffeeCol;
-            const showResult = phase === 'done';
+            const hasArrived = arrivedPlayers.has(i);
             return (
               <div
                 key={`bottom-${i}`}
                 className="flex flex-col items-center justify-start pt-1"
                 style={{ width: COL_WIDTH }}
               >
-                {showResult ? (
-                  <motion.span
-                    className={`text-sm font-black ${isCoffee ? 'text-[#C62828]' : 'text-success'}`}
+                {hasArrived ? (
+                  <motion.div
+                    className="flex flex-col items-center"
                     initial={{ opacity: 0, scale: 0 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ type: 'spring', delay: 0.2 }}
+                    transition={{ type: 'spring', delay: 0.1 }}
                   >
-                    {isCoffee ? '커피☕' : 'safe✓'}
-                  </motion.span>
+                    <span className={`text-sm font-black ${isCoffee ? 'text-[#C62828]' : 'text-success'}`}>
+                      {isCoffee ? '☕' : '✓'}
+                    </span>
+                    <span className={`text-[10px] font-bold ${isCoffee ? 'text-[#C62828]' : 'text-coffee-400'}`}>
+                      {players[arrivedPlayers.get(i)!]?.name}
+                    </span>
+                  </motion.div>
                 ) : (
                   <span className="text-lg">❓</span>
                 )}

@@ -9,19 +9,14 @@ import { SFX } from '@/utils/sound';
 import { haptic } from '@/utils/haptic';
 import TapButton from '@/components/game/TapButton';
 
-type Phase = 'ready' | 'shaking' | 'pulling' | 'done';
-
-const STRAW_WIDTH = 24;
+type Phase = 'ready' | 'drawing' | 'done';
 
 export default function StrawGame() {
   const router = useRouter();
   const { players, setResult } = useGameStore();
   const [phase, setPhase] = useState<Phase>('ready');
-  const [pulledIdx, setPulledIdx] = useState(-1);
-  const [pulledSet, setPulledSet] = useState<Set<number>>(new Set());
-  const [pullOffsets, setPullOffsets] = useState<number[]>(() =>
-    players.map(() => 0)
-  );
+  const [currentIdx, setCurrentIdx] = useState(-1);
+  const [revealedSet, setRevealedSet] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (players.length < 2) router.replace('/');
@@ -35,56 +30,57 @@ export default function StrawGame() {
   // Straw lengths: loser gets short, rest get varying long lengths
   const strawLengths = useMemo(() => {
     return players.map((_, i) => {
-      if (i === loserIdx) return 60; // short straw (px)
-      return 120 + Math.random() * 40; // long straws 120-160px
+      if (i === loserIdx) return 80;
+      return 160 + Math.random() * 40;
     });
   }, [players, loserIdx]);
 
-  const handleDraw = useCallback(() => {
+  // Draw order: randomize which player draws which straw position
+  const drawOrder = useMemo(() => {
+    const indices = players.map((_, i) => i);
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    return indices;
+  }, [players]);
+
+  const handleStart = useCallback(() => {
     if (phase !== 'ready') return;
     SFX.tap();
     haptic('medium');
+    setPhase('drawing');
 
-    // Shake phase - straws wiggle before pulling
-    setPhase('shaking');
+    let count = 0;
 
-    setTimeout(() => {
-      setPhase('pulling');
+    const drawNext = () => {
+      const idx = drawOrder[count];
+      setCurrentIdx(idx);
+      SFX.tick();
       haptic('light');
 
-      // Pull each straw one by one
-      let count = 0;
-      const pullInterval = setInterval(() => {
-        const idx = count;
-        setPulledIdx(idx);
-
-        // Animate pull-up: straw slides up out of the holder
-        setPullOffsets((prev) => {
-          const next = [...prev];
-          next[idx] = -80; // pull up by 80px
+      // After a delay, reveal this straw
+      setTimeout(() => {
+        setRevealedSet((prev) => {
+          const next = new Set(Array.from(prev));
+          next.add(idx);
           return next;
         });
 
-        SFX.tick();
-        haptic('light');
-
-        setTimeout(() => {
-          setPulledSet((prev) => {
-            const next = new Set(Array.from(prev));
-            next.add(idx);
-            return next;
-          });
-        }, 400);
+        const isShort = idx === loserIdx;
+        if (isShort) {
+          SFX.fail();
+          haptic('heavy');
+        } else {
+          SFX.tap();
+        }
 
         count++;
-        if (count >= players.length) {
-          clearInterval(pullInterval);
 
+        // If loser found, end early
+        if (isShort) {
           setTimeout(() => {
-            SFX.fail();
-            haptic('heavy');
             setPhase('done');
-
             setTimeout(() => {
               const loser = players[loserIdx];
               const rankings = players
@@ -100,17 +96,47 @@ export default function StrawGame() {
                 gameName: '제비뽑기',
               });
               router.push('/result');
-            }, 2500);
-          }, 800);
+            }, 2000);
+          }, 600);
+          return;
         }
-      }, 1200);
-    }, 1500); // shake for 1.5s before pulling
-  }, [phase, players, loserIdx, setResult, router]);
+
+        if (count < players.length) {
+          setTimeout(drawNext, 800);
+        } else {
+          // All drawn without finding loser (shouldn't happen)
+          setPhase('done');
+          setTimeout(() => {
+            const loser = players[loserIdx];
+            const rankings = players
+              .map((p, i) => ({
+                ...p,
+                score: i === loserIdx ? 0 : 1,
+              }))
+              .sort((a, b) => b.score - a.score);
+
+            setResult({
+              rankings,
+              loser: { ...loser, score: 0 },
+              gameName: '제비뽑기',
+            });
+            router.push('/result');
+          }, 2000);
+        }
+      }, 600);
+    };
+
+    // Small initial delay then start
+    setTimeout(drawNext, 500);
+  }, [phase, players, loserIdx, drawOrder, setResult, router]);
 
   if (players.length < 2) return null;
 
+  const HIDDEN_HEIGHT = 50; // visible portion above the line when hidden
+  const LINE_Y = 200; // where the "ground line" is
+
   return (
-    <div className="flex flex-col items-center min-h-dvh px-5 py-6 gap-5">
+    <div className="flex flex-col items-center min-h-dvh px-5 py-6 gap-4">
       {/* Header */}
       <div className="flex items-center gap-3 w-full">
         <motion.button
@@ -126,82 +152,47 @@ export default function StrawGame() {
       </div>
 
       <p className="text-sm font-bold text-coffee-400">
-        {phase === 'ready' && '버튼을 눌러 제비를 뽑으세요!'}
-        {phase === 'shaking' && '흔들흔들...'}
-        {phase === 'pulling' &&
-          pulledIdx >= 0 &&
-          `${players[pulledIdx]?.name} 뽑는 중...`}
-        {phase === 'done' && `${players[loserIdx]?.name} 꽝!`}
+        {phase === 'ready' && '짧은 제비를 뽑으면 커피 당첨!'}
+        {phase === 'drawing' &&
+          currentIdx >= 0 &&
+          `${players[currentIdx]?.name} 뽑는 중...`}
+        {phase === 'done' && `${players[loserIdx]?.name} 꽝! ☕`}
       </p>
 
-      {/* Straws area */}
+      {/* Straw drawing area */}
       <div className="flex-1 flex items-center justify-center w-full">
-        <div className="relative w-full max-w-md">
-          {/* Hand/holder bar */}
-          <div
-            className="absolute left-0 right-0 bg-gradient-to-br from-coffee-300 to-coffee-500 rounded-clay shadow-clay z-10"
-            style={{ height: 64, top: '50%', transform: 'translateY(-50%)' }}
-          >
-            <div className="flex items-center justify-center h-full gap-1">
-              <motion.span
-                className="text-base font-black text-coffee-100"
-                animate={
-                  phase === 'shaking'
-                    ? { opacity: [1, 0.5, 1] }
-                    : {}
-                }
-                transition={{ duration: 0.5, repeat: Infinity }}
-              >
-                {phase === 'ready'
-                  ? '🤜 뽑아보세요! 🤛'
-                  : phase === 'shaking'
-                    ? '🫨 흔들흔들...'
-                    : phase === 'pulling'
-                      ? '🖐️ 뽑는 중...'
-                      : ''}
-              </motion.span>
-            </div>
-          </div>
-
-          {/* Straws sticking out of the holder */}
-          <div
-            className="flex items-end justify-center gap-4 px-4 relative"
-            style={{ minHeight: 320 }}
-          >
+        <div className="relative w-full max-w-sm">
+          {/* Straws */}
+          <div className="flex items-start justify-center gap-3 px-2">
             {players.map((p, i) => {
               const animal = getAnimal(p.animal);
+              const isRevealed = revealedSet.has(i);
               const isShort = i === loserIdx;
-              const isPulled = pulledSet.has(i);
-              const isBeingPulled = phase === 'pulling' && pulledIdx === i;
+              const isCurrent = phase === 'drawing' && currentIdx === i && !isRevealed;
               const isLoser = phase === 'done' && isShort;
-
-              // Visible height: before pull all look same,
-              // after pull shows actual length
-              const visibleStrawHeight = isPulled
-                ? strawLengths[i]
-                : 80; // same height visible before pull
+              const fullHeight = strawLengths[i];
 
               return (
                 <div
                   key={p.id}
                   className="flex flex-col items-center"
-                  style={{ width: STRAW_WIDTH + 32 }}
+                  style={{ width: 56 }}
                 >
-                  {/* Player emoji above */}
+                  {/* Player emoji + name at top */}
                   <motion.div
-                    className="flex flex-col items-center gap-0.5 mb-2"
+                    className="flex flex-col items-center gap-0.5 mb-3"
                     animate={
-                      isBeingPulled
-                        ? { y: [0, -12, 0], scale: [1, 1.2, 1] }
+                      isCurrent
+                        ? { y: [0, -8, 0], scale: [1, 1.15, 1] }
                         : isLoser
-                          ? { y: [0, -5, 0] }
+                          ? { y: [0, -4, 0] }
                           : {}
                     }
                     transition={
-                      isBeingPulled
-                        ? { duration: 0.4 }
+                      isCurrent
+                        ? { duration: 0.4, repeat: Infinity }
                         : isLoser
-                          ? { duration: 0.4, repeat: Infinity }
+                          ? { duration: 0.5, repeat: Infinity }
                           : {}
                     }
                   >
@@ -215,110 +206,113 @@ export default function StrawGame() {
                     </span>
                   </motion.div>
 
-                  {/* Straw */}
-                  <motion.div
-                    className="relative rounded-full overflow-visible"
-                    style={{
-                      width: STRAW_WIDTH,
-                      background: isPulled
-                        ? isShort
-                          ? 'linear-gradient(to bottom, #EF5350, #C62828)'
-                          : 'linear-gradient(to bottom, #66BB6A, #388E3C)'
-                        : 'linear-gradient(to bottom, #D7CCC8, #8D6E63)',
-                    }}
-                    animate={{
-                      height: visibleStrawHeight,
-                      y: pullOffsets[i],
-                      x:
-                        phase === 'shaking'
-                          ? [0, -3, 3, -2, 2, 0]
-                          : isLoser
-                            ? [0, -5, 5, -5, 5, 0]
-                            : 0,
-                    }}
-                    transition={{
-                      height: { duration: 0.5, ease: 'easeOut' },
-                      y: { duration: 0.5, ease: 'easeOut' },
-                      x:
-                        phase === 'shaking'
-                          ? {
-                              duration: 0.3,
-                              repeat: Infinity,
-                              repeatType: 'loop' as const,
-                            }
-                          : isLoser
-                            ? {
-                                duration: 0.4,
-                                repeat: 3,
-                              }
-                            : { duration: 0.3 },
-                    }}
+                  {/* Straw container */}
+                  <div
+                    className="relative flex flex-col items-center"
+                    style={{ height: LINE_Y }}
                   >
-                    {/* Top cap */}
-                    <div
-                      className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full"
+                    {/* The straw itself */}
+                    <motion.div
+                      className="relative rounded-full overflow-hidden"
                       style={{
-                        width: STRAW_WIDTH + 6,
-                        height: 10,
-                        background: isPulled
-                          ? isShort
-                            ? '#C62828'
-                            : '#2E7D32'
-                          : '#795548',
-                        boxShadow: '0 -2px 4px rgba(0,0,0,0.15)',
+                        width: 20,
+                        originY: 0,
                       }}
-                    />
+                      initial={{ height: HIDDEN_HEIGHT }}
+                      animate={{
+                        height: isRevealed ? fullHeight : HIDDEN_HEIGHT,
+                        x: isCurrent ? [0, -3, 3, -2, 2, 0] : 0,
+                      }}
+                      transition={{
+                        height: { duration: 0.5, ease: 'easeOut' },
+                        x: isCurrent
+                          ? { duration: 0.3, repeat: Infinity }
+                          : { duration: 0.2 },
+                      }}
+                    >
+                      {/* Straw body */}
+                      <div
+                        className="absolute inset-0 rounded-full"
+                        style={{
+                          background: isRevealed
+                            ? isShort
+                              ? 'linear-gradient(to bottom, #EF5350, #C62828)'
+                              : 'linear-gradient(to bottom, #81C784, #388E3C)'
+                            : 'linear-gradient(to bottom, #BCAAA4, #8D6E63)',
+                        }}
+                      />
+                      {/* Stripe pattern on straw */}
+                      {isRevealed &&
+                        Array.from({
+                          length: Math.floor(fullHeight / 25),
+                        }).map((_, li) => (
+                          <div
+                            key={li}
+                            className="absolute left-1/2 -translate-x-1/2 w-3/5 h-px bg-white/25"
+                            style={{ top: 12 + li * 25 }}
+                          />
+                        ))}
+                      {/* Top cap */}
+                      <div
+                        className="absolute top-0 left-1/2 -translate-x-1/2 rounded-t-full"
+                        style={{
+                          width: 24,
+                          height: 8,
+                          background: isRevealed
+                            ? isShort
+                              ? '#B71C1C'
+                              : '#2E7D32'
+                            : '#6D4C41',
+                        }}
+                      />
+                    </motion.div>
 
-                    {/* Result badge */}
-                    {isPulled && (
+                    {/* Result badge below straw */}
+                    {isRevealed && (
                       <motion.div
-                        initial={{ scale: 0, opacity: 0, y: 10 }}
-                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
                         transition={{
                           type: 'spring',
-                          stiffness: 500,
+                          stiffness: 400,
                           damping: 15,
-                          delay: 0.2,
+                          delay: 0.15,
                         }}
-                        className="absolute -top-10 left-1/2 -translate-x-1/2"
+                        className="mt-2"
                       >
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-lg shadow-lg ${
+                          className={`px-2 py-1 rounded-lg text-xs font-black ${
                             isShort
-                              ? 'bg-red-100 border-2 border-red-400'
-                              : 'bg-green-100 border-2 border-green-400'
+                              ? 'bg-red-100 text-[#C62828] border border-red-300'
+                              : 'bg-green-100 text-green-700 border border-green-300'
                           }`}
                         >
-                          {isShort ? '☕' : '✓'}
+                          {isShort ? '☕ 꽝!' : '✓ 통과'}
                         </div>
                       </motion.div>
                     )}
-
-                    {/* Length indicator lines on straw */}
-                    {isPulled &&
-                      Array.from({
-                        length: Math.floor(visibleStrawHeight / 20),
-                      }).map((_, li) => (
-                        <div
-                          key={li}
-                          className="absolute left-1/2 -translate-x-1/2 w-3/5 h-px bg-white/20"
-                          style={{ top: 15 + li * 20 }}
-                        />
-                      ))}
-                  </motion.div>
+                  </div>
                 </div>
               );
             })}
           </div>
+
+          {/* Guide text */}
+          {phase === 'ready' && (
+            <div className="text-center mt-4">
+              <span className="text-xs text-coffee-300">
+                제비가 짧으면 꽝! 긴 제비를 뽑아야 통과!
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Draw button */}
+      {/* Start button */}
       <div className="w-full">
-        <TapButton onClick={handleDraw} disabled={phase !== 'ready'}>
-          {phase === 'ready' && '🎋 제비 뽑기!'}
-          {phase === 'shaking' && '🫨 흔들흔들...'}
-          {phase === 'pulling' && '🎋 뽑는 중...'}
+        <TapButton onClick={handleStart} disabled={phase !== 'ready'}>
+          {phase === 'ready' && '🎋 제비 뽑기 시작!'}
+          {phase === 'drawing' && '🎋 뽑는 중...'}
           {phase === 'done' && '☕ 결과 확인 중...'}
         </TapButton>
       </div>

@@ -127,7 +127,7 @@ export default function ResultPage() {
             router.push('/games');
           }}
         >
-          🔄 다시하기
+          🎮 다른 게임 하기
         </Button>
         <Button
           variant="secondary"
@@ -136,7 +136,7 @@ export default function ResultPage() {
             router.push('/');
           }}
         >
-          🏠 처음으로
+          🐾 동물 다시 고르기
         </Button>
       </div>
     </div>
