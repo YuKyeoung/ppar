@@ -2,6 +2,14 @@ import type { MiniGame } from '@/types';
 
 export const GAMES: MiniGame[] = [
   {
+    id: 'race',
+    name: '달리기 경주',
+    description: '동물들이 달린다! 꼴찌는 커피!',
+    emoji: '🏃',
+    minPlayers: 2,
+    maxPlayers: 6,
+  },
+  {
     id: 'roulette',
     name: '룰렛',
     description: '룰렛 돌려서 꼴찌 결정!',

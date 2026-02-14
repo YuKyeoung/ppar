@@ -47,7 +47,7 @@ export default function Card() {
     setFlipped(true);
 
     // After all flip animations complete, determine loser
-    const totalFlipTime = 8000 + 1200; // stagger + flip duration
+    const totalFlipTime = players.length * 400 + 800; // fast stagger + flip
     setTimeout(() => {
       SFX.success();
       haptic('heavy');
@@ -123,8 +123,8 @@ export default function Card() {
                         : { rotateY: 0 }
                     }
                     transition={{
-                      duration: 1.2,
-                      delay: flipped ? i * (8 / players.length) : 0,
+                      duration: 0.6,
+                      delay: flipped ? i * 0.4 : 0,
                       ease: 'easeOut',
                     }}
                     style={{ transformStyle: 'preserve-3d' }}
