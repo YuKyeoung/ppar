@@ -133,7 +133,7 @@ export default function ResultPage() {
           variant="secondary"
           onClick={() => {
             clear();
-            router.push('/');
+            router.push('/setup');
           }}
         >
           🐾 동물 다시 고르기
