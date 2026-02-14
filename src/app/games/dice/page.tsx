@@ -174,7 +174,7 @@ export default function DicePage() {
       <div className="flex items-center gap-3 w-full">
         <motion.button
           whileTap={{ y: 2 }}
-          onClick={() => router.push('/games')}
+          onClick={() => router.back()}
           className="w-11 h-11 rounded-[14px] border-none bg-gradient-to-br from-white to-coffee-100 shadow-clay flex items-center justify-center text-xl cursor-pointer"
         >
           ←

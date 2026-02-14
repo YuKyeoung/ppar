@@ -65,18 +65,24 @@ export default function RaceGame() {
   const startRace = useCallback(() => {
     setPhase('racing');
 
-    // Small initial speed variance per player
-    speeds.current = players.map(
-      () => 0.15 + (Math.random() - 0.5) * 0.03
-    );
+    // Per-player state: base speed + momentum (smoothly varying boost)
+    const playerState = players.map(() => ({
+      base: 0.13 + Math.random() * 0.04,
+      momentum: 0,            // current momentum (-0.1 ~ +0.15)
+      momentumTarget: 0,      // target momentum (smooth transition)
+      sprintTimer: 0,         // frames left in sprint
+    }));
+    speeds.current = playerState.map((s) => s.base);
     posRef.current = players.map(() => 0);
     finishRef.current = [];
 
     let lastTime = performance.now();
+    let frameTick = 0;
 
     const tick = (now: number) => {
       const dt = Math.min(now - lastTime, 50);
       lastTime = now;
+      frameTick++;
 
       const newPos = [...posRef.current];
 
@@ -85,29 +91,67 @@ export default function RaceGame() {
         .map((p, i) => ({ i, p }))
         .sort((a, b) => b.p - a.p);
 
+      // Every ~90 frames (~1.5s), assign new momentum targets
+      if (frameTick % 90 === 0) {
+        for (let i = 0; i < players.length; i++) {
+          playerState[i].momentumTarget = (Math.random() - 0.45) * 0.14;
+        }
+      }
+
+      // Every ~120 frames (~2s), trigger a random sprint event
+      if (frameTick % 120 === 0) {
+        // Pick a random non-finished player for sprint (bias toward trailing)
+        const candidates = ranked
+          .filter((r) => newPos[r.i] < 100)
+          .map((r, ri) => ({ i: r.i, weight: 1 + ri * 2 }));
+        const totalWeight = candidates.reduce((s, c) => s + c.weight, 0);
+        let roll = Math.random() * totalWeight;
+        for (const c of candidates) {
+          roll -= c.weight;
+          if (roll <= 0) {
+            playerState[c.i].sprintTimer = 30 + Math.floor(Math.random() * 30);
+            break;
+          }
+        }
+      }
+
       for (let ri = 0; ri < players.length; ri++) {
         const i = ranked[ri].i;
         if (newPos[i] >= 100) continue;
 
-        const rank = ri; // 0 = leader
+        const ps = playerState[i];
+        const rank = ri;
         const distBehind = ranked[0].p - newPos[i];
 
-        // Re-roll base speed occasionally (speed varies over time)
-        if (Math.random() < 0.03) {
-          speeds.current[i] = 0.15 + (Math.random() - 0.5) * 0.03;
+        // Smooth momentum transition
+        ps.momentum += (ps.momentumTarget - ps.momentum) * 0.08;
+
+        // Re-roll base speed occasionally
+        if (Math.random() < 0.02) {
+          ps.base = 0.13 + Math.random() * 0.04;
         }
 
-        // Frame noise: bigger range for lower ranks (comeback chance)
-        const noiseRange = 0.10 + rank * 0.14;
-        const noise = (Math.random() - 0.35) * noiseRange;
+        // Sprint boost (temporary big speed increase)
+        let sprintBoost = 0;
+        if (ps.sprintTimer > 0) {
+          sprintBoost = 0.12;
+          ps.sprintTimer--;
+        }
+
+        // Frame noise: bigger range for lower ranks
+        const noiseRange = 0.06 + rank * 0.10;
+        const noise = (Math.random() - 0.4) * noiseRange;
 
         // Rubber-band: trailing players get boost proportional to gap
-        const rubberBand = distBehind * 0.01;
+        const rubberBand = distBehind * 0.006;
 
-        // Leader penalty
-        const penalty = rank === 0 ? 0.035 : 0;
+        // Leader drag: 1st place occasionally stumbles
+        const leaderDrag = rank === 0 ? 0.025 : 0;
 
-        const speed = Math.max(0.02, speeds.current[i] + noise + rubberBand - penalty);
+        const speed = Math.max(
+          0.03,
+          ps.base + ps.momentum + sprintBoost + noise + rubberBand - leaderDrag,
+        );
         newPos[i] = Math.min(100, newPos[i] + speed * (dt / 16));
 
         if (newPos[i] >= 100 && !finishRef.current.includes(i)) {
@@ -162,7 +206,7 @@ export default function RaceGame() {
       <div className="flex items-center gap-3 w-full">
         <motion.button
           whileTap={{ y: 2 }}
-          onClick={() => router.push('/games')}
+          onClick={() => router.back()}
           className="w-11 h-11 rounded-[14px] border-none bg-gradient-to-br from-white to-coffee-100 shadow-clay flex items-center justify-center text-xl cursor-pointer"
         >
           ←
